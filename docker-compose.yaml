@@ -1,12 +1,5 @@
 
 services:
-  flask:
-    build: .
-    container_name: simplyemptyflask
-    ports:
-      - "8000:8000"
-    #add restart directive at your option for server installs
-    #restart: unless-stopped
 
   nginx:
     image: nginx:latest
@@ -15,8 +8,87 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./server/nginx_docker.conf:/etc/nginx/nginx.conf:ro
+      - ./server/nginx_all_apps.conf:/etc/nginx/nginx.conf:ro
+      - ./data/dokucozy:/var/www/dokucozy
+      - ./data/dokuN657CZ:/var/www/dokuN657CZ
+    depends_on:
+        - php1
+        - php2
+        - flask
+    networks:
+        - rag-network
     #add restart directive at your option for server installs
     #restart: unless-stopped
+
+  flask:
+    build:
+      context: .
+      dockerfile: flask.dockerfile
+    container_name: site_flask
+    env_file:
+      - ./.env_openai_key
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./fwww:/app/fwww
+      - ./data/jobs:/app/jobs
+    depends_on:
+      - chroma-rag
+      - ollama-rag
+    networks:
+      - rag-network
+    #add restart directive at your option for server installs
+    #restart: unless-stopped
+
+  php1:
+      image: php:7-fpm
+      container_name: php1
+      volumes:
+        - ./data/dokucozy:/var/www/dokucozy
+      networks:
+        - rag-network
+    #add restart directive at your option for server installs
+    #restart: unless-stopped
+
+  php2:
+      image: php:7-fpm
+      container_name: php2
+      volumes:
+        - ./data/dokuN657CZ:/var/www/dokuN657CZ
+      networks:
+        - rag-network
+    #add restart directive at your option for server installs
+    #restart: unless-stopped
+
+  chroma-rag:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./.env_chroma
+    volumes:
+      - ./data/my_db:/chroma/my_db
+    networks:
+      - rag-network
+    #add restart directive at your option for server installs
+    #restart: unless-stopped
+
+# docker run --gpus=all -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
+  ollama-rag:
+    build:
+      context: .
+      dockerfile: ollama.dockerfile
+    #volumes:
+    #  - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - rag-network
+    #add restart directive at your option for server installs
+    #restart: unless-stopped
+
+networks:
+  rag-network:
+    driver: bridge
 
 

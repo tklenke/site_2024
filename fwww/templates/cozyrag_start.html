@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="row">
+      <div class="full column" style="margin-top: 50px;">
+        <h1>CozyRAG</h1>
+        <h5>Retrieval-Augmented Generation for Cozy Builders</h5>
+        {% include "disclaimer.html" %}
+        <a class="button button-primary" href="{{ url_for('cozyrag_query') }}">I have read, I understand, and I agree to the Dislaimer above. I would like to ask a question.</a></h6>
+      </div>
+    </div>
+{% endblock %}

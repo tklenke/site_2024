@@ -9,21 +9,23 @@ WORKDIR /app
 
 # Copy requirements file
 COPY requirements.txt requirements.txt
+COPY server/gunicorn.conf gunicorn.conf
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the app code
-COPY fwww /app/fwww
+# Wll not Copy the app code, but will set volumes on docker-compose.yaml
+#COPY fwww /app/fwww
 
 # Expose the port that Gunicorn will run on
-EXPOSE 8000
+EXPOSE 8001
 
 # Set environment variables for Flask
 ENV FLASK_ENV=production
+ENV PYTHONUNBUFFERED=1
 
 # Set the working directory in the container to fwww
 WORKDIR /app/fwww
 
 # Command to run the application with Gunicorn
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8000", "wsgi:app"]
+CMD ["gunicorn", "-c", "/app/gunicorn.conf", "wsgi:app"]

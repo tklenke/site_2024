@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="row">
+      <div class="full column" style="margin-top: 50px;">
+        <h1>CozyRAG</h1>
+        <h5>Retrieval-Augmented Generation for Cozy Builders</h5>
+      </div>
+    </div>
+
+    <div id="result">
+    <div class="row">
+      <div class="eight columns">
+        <h3>Running Query.</h3>
+        <p><strong>Please do not resubmit.</strong> This may take up to two minutes...</p>
+        <pre><code><div id="status">info</div></code></pre>
+        <script>
+            function fetchData() {
+              fetch('{{ url_for("cozyrag_status", process_id=session["process_id"]) }}')
+                .then(response => response.json())
+                .then(data => {
+                  if (data.status === 'complete') {
+                    document.getElementById('result').innerHTML = data.result_html;
+                  } else {
+                    document.getElementById('status').textContent = data.status_text;
+                    setTimeout(fetchData, 1000); // Wait 10 seconds and fetch again
+                  }
+                });
+            }
+    
+            window.onload = fetchData;
+        </script>
+      </div>
+    </div>
+    </div>
+
+{% endblock %}

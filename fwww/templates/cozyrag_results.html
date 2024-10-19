@@ -1,0 +1,23 @@
+<div class="row">
+    <div class="full column">
+        <h3>Results</h3>
+        <p>{{results['result']}}</p>
+        <pre>in {{results['elapsed']}} seconds</pre>
+    </div>
+</div>
+
+<div class="row">
+    <div class="eight columns">
+        <strong>Your Question:</strong>    
+        <pre><code>{{ results['query'] }}</code></pre>
+        <strong>Your Email:</strong>
+        <pre><code>{{ results['email']}}</code></pre>
+        <a class="button button-primary" href="{{ url_for('cozyrag_query') }}">Ask another question</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="full column">
+      {% include "disclaimer.html" %}
+    </div>
+</div>  

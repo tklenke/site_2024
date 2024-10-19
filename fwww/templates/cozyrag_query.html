@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="row">
+      <div class="full column" style="margin-top: 50px;">
+        <h1>CozyRAG</h1>
+        <h5>Retrieval-Augmented Generation for Cozy Builders</h5>
+      </div>
+    </div>
+    <div class="row">
+        <div class="eight columns">    
+      <form method="post">
+        <label for="question">Question</label>
+        <textarea class="u-full-width" name="question" 
+        placeholder="e.g. How much angle should I have for the control stick to allow for sufficient clearance between the stick and the fuselage side to get full aileron travel when your hand is on the stick"
+        style="min-height: 100px;">{{ request.form['question'] }}</textarea>
+        {% if not session.get('email') %}
+        <div class="row">
+            <div class="eight columns">
+              <label for="EmailAddress">Your email (optional)</label>
+              <input class="u-full-width" type="email" placeholder="test@mailbox.com" name="email" id="email" value="{{ request.form['email'] }}">
+            </div>
+          </div>
+          {% endif %}
+        <input class="button-primary" type="submit" value="Submit">
+      </form>
+    </div>
+    <div class="row">
+        <div class="full column">
+          {% include "disclaimer.html" %}
+        </div>
+      </div>    
+{% endblock %}

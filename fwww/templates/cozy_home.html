@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="row">
+      <div class="full column" style="margin-top: 50px;">
+        <h1>Tom's Cozy Home</h1>
+        <p>Links below to Cozy related resources.
+        </p>
+        <ul>
+          <li><a href="{{ url_for('cozyrag_start') }}">Cozy RAG</a><br>
+            RAG (Retrieval-Augmented Generation) enhances LLMs (e.g. ChatGPT) by retrieving external data 
+            (Cozy Newsletters, Newsgroup messages, etc.) to improve response accuracy.
+          </li>
+          <li><a href="https://eaabuilderslog.org/?blproject&proj=8CIPu4ROz">My EAA Builder's Log</a></li>
+          <li><a href="/dokucozy/doku.php">DokuCozy (DRAFT)</a>
+            I've started a Wikipedia-like tool and invite feedback on its structure. Contributors
+            welcome—it could be a great resource!
+          </li>
+        </ul>
+      </div>
+    </div>
+{% endblock %}
