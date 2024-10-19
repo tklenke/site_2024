@@ -1,8 +1,27 @@
 <div class="row">
     <div class="full column">
         <h3>Results</h3>
-        <p>{{results['result']}}</p>
-        <pre>in {{results['elapsed']}} seconds</pre>
+        <p>{{results['result']['answer']}}</p>
+        {% include "disclaimer_min.html" %}
+        <a class="button button-primary" href="{{ url_for('cozyrag_query') }}">Ask another question</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="full column">
+        <h5>Provided Docs</h5>
+    {% for doc in results['result']['provided_docs'] %}
+        {{doc['score']}} {{doc['source']}}<br>
+    {% endfor %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="full column">
+        <h5>Other Related Docs</h5>
+    {% for doc in results['result']['related_docs'] %}
+        {{doc['score']}} {{doc['source']}}<br>
+    {% endfor %}
     </div>
 </div>
 
@@ -10,9 +29,12 @@
     <div class="eight columns">
         <strong>Your Question:</strong>    
         <pre><code>{{ results['query'] }}</code></pre>
-        <strong>Your Email:</strong>
-        <pre><code>{{ results['email']}}</code></pre>
-        <a class="button button-primary" href="{{ url_for('cozyrag_query') }}">Ask another question</a>
+        <strong>Statistics:</strong>    
+        <pre><code>Completed in {{results['elapsed']}} seconds
+Number Docs Provided: {{results['result']['number provided docs']}} Average Score: {{results['result']['average score']}}
+GPT Model: {{results['result']['model']}}
+Prompt Tokens: {{results['result']['prompt tokens']}}  Response Tokens: {{results['result']['completion tokens']}}
+Submitted By: {{ results['email']}}</code></pre>
     </div>
 </div>
 

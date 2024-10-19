@@ -69,7 +69,7 @@ def cozyrag_answer():
 def cozyrag_status(process_id):
     data = get_process_info(app.config['JOBS_DiR'], process_id)
     elapsed = time.time() - float(data['created'])
-    data['elapsed'] = elapsed
+    data['elapsed'] = f"{elapsed:.2f}"
 
     if data['status'] == 'complete':
         data['result_html'] = render_template('cozyrag_results.html', results=data)
