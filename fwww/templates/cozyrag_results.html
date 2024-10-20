@@ -1,7 +1,7 @@
 <div class="row">
     <div class="full column">
         <h3>Results</h3>
-        <p>{{results['result']['answer']}}</p>
+        {{ markdown_to_html(results['result']['answer'])|safe }}
         {% include "disclaimer_min.html" %}
         <a class="button button-primary" href="{{ url_for('cozyrag_query') }}">Ask another question</a>
     </div>
@@ -10,18 +10,45 @@
 <div class="row">
     <div class="full column">
         <h5>Provided Docs</h5>
+        <table>
+            <thead>
+              <tr>
+                <th>Score</th>
+                <th>Document</th>
+              </tr>
+            </thead>
+            <tbody>
     {% for doc in results['result']['provided_docs'] %}
-        {{doc['score']}} {{doc['source']}}<br>
+                <tr style="line-height: .5;">
+                    <td>{{ doc['score'] }}</td>
+                    <td>{{ originid_anchor(doc['source'])|safe }} {{doc['source']}}</td>
+                </tr>
+
     {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
 <div class="row">
     <div class="full column">
         <h5>Other Related Docs</h5>
+        <table>
+            <thead>
+                <tr>
+                <th>Score</th>
+                <th>Document</th>
+              </tr>
+            </thead>
+            <tbody>
     {% for doc in results['result']['related_docs'] %}
-        {{doc['score']}} {{doc['source']}}<br>
+                <tr style="line-height: .5;">
+                    <td>{{ doc['score'] }}</td>
+                    <td>{{ originid_anchor(doc['source'])|safe }} {{doc['source']}}</td>
+                </tr>
     {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 

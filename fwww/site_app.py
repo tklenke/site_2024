@@ -3,7 +3,9 @@ from flask import Flask, render_template, request, url_for, flash, redirect, \
                   jsonify, session
 import time, os, json, queue
 from src.llm_functions import FileProcessorThread
-from src.site_functions import sanitize, new_question, get_process_info
+from src.site_functions import sanitize, new_question, get_process_info, url_from_source
+import markdown
+
 
 app = Flask(__name__)
 
@@ -19,6 +21,7 @@ app.config['PROCESS_ID_LEN'] = 10
 FPQueue = queue.Queue()
 FPThread = FileProcessorThread(app.config['JOBS_DiR'],FPQueue)
 FPQueue.put("startup...checking all jobs")
+Md = markdown.Markdown()
 
 # ----------- Main Routes
 @app.route("/")
@@ -76,6 +79,20 @@ def cozyrag_status(process_id):
     else:
         data['status_text'] = "Status: " + data['status'] + "." * (int(elapsed) % 10)
     return jsonify(data)
+
+# ------ Context Processor for use in templates
+@app.context_processor
+def originid_anchor_processor():
+    def originid_anchor(txt):
+        href, click_txt = url_from_source(txt)
+        return f"<a href='{href}'>{click_txt}</a>"
+    return dict(originid_anchor=originid_anchor)
+
+@app.context_processor
+def markdown_to_html_processor():
+    def markdown_to_html(mdtxt):
+        return Md.convert(mdtxt)
+    return dict(markdown_to_html=markdown_to_html)
 
 if __name__ == "__main__":
    app.run(host='0.0.0.0')

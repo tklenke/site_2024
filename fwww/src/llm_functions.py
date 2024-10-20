@@ -9,6 +9,7 @@ MODEL = "gpt-4o-mini"
 chromahost = "chroma-rag"
 ollamahost = "http://ollama-rag:11434"
 GET_GPT = False
+lorem_ipsum_string = """\n**Lorem ipsum dolor sit amet**, *consectetur adipiscing elit*, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.  \nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\n> *"Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."*\n\n- Excepteur sint occaecat cupidatat non proident,\n- Sunt in culpa qui officia deserunt mollit anim id est laborum."""
 
 MAX_DISTANCE = .45
 MIN_DOCUMENTS = 5
@@ -62,7 +63,7 @@ def process_question(question):
         r['completion tokens'] = completion.usage.completion_tokens
     else:
         #Fake it
-        r['answer'] = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum'
+        r['answer'] = lorem_ipsum_string
         r['model'] = 'Did not evaluate at GPT'
         r['prompt tokens'] = len(question.split())
         r['completion tokens'] = len(r['answer'].split())
