@@ -8,7 +8,7 @@ KEY = os.environ.get("OPENAI_KEY")
 MODEL = "gpt-4o-mini"
 chromahost = "chroma-rag"
 ollamahost = "http://ollama-rag:11434"
-GET_GPT = True
+GET_GPT = False
 
 MAX_DISTANCE = .45
 MIN_DOCUMENTS = 5
@@ -93,6 +93,8 @@ class FileProcessorThread(threading.Thread):
     def __init__(self, job_path, job_queue):
         if FileProcessorThread.instance:
             raise RuntimeError("Thread already running")
+        else:
+            print(f"File Processing Thread starting...")
         FileProcessorThread.instance = self
         threading.Thread.__init__(self)
         self.daemon = True

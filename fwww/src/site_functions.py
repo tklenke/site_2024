@@ -1,5 +1,6 @@
 from markupsafe import Markup, escape
 import threading, os, string, random, time, json
+from src.open_with_lock import open_with_lock
 
 def sanitize(txt):
     # my santize functions for unknown text
@@ -16,7 +17,7 @@ def new_question(input, directory, nIdLen):
     input['status'] = 'new'
     input['created'] = time.time()
     # Save the dictionary to a JSON file
-    with open(jsonFilePath, "w") as f:
+    with open_with_lock(jsonFilePath, "w") as f:
         json.dump(input, f)
     return processId
 
@@ -27,7 +28,7 @@ def get_process_info(directory, processId=None, filename=None ):
     else:
         file_path = os.path.join(directory, filename)
     try:
-        with open(file_path, 'r') as f:
+        with open_with_lock(file_path, 'r') as f:
             try:
                 return json.load(f)
             except json.JSONDecodeError as e:
@@ -48,7 +49,7 @@ def update_process_info(info, directory, processId=None, filename=None ):
     info['update_time'] = time.time()
     try:
         # Save the dictionary to a JSON file
-        with open(file_path, "w") as f:
+        with open_with_lock(file_path, "w") as f:
             json.dump(info, f)
 
     except IOError as e:

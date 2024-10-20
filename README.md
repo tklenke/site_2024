@@ -4,13 +4,9 @@ Website 2024 revision.  Docker based.  Nginx, flask, docuwiki (2x) and supportin
 ### Todo
 
 + Brainstorm List
-    * motivations (no one cares ... kill it)
-        * Keep current
-            * Programming currency
-            * Tools and methods
-            * Limitations of TOols relevant for potential startup boards work
-        * Learn about LLM to connect with JT
-    + Think about OKR for this (website) and CozyRAG
++ fix docs to link to sources
++ tool to look at all jobs, query, email, response, total tokens
++ change result test from markdown to html
 
 + home page
 + /quotendimus see also blogger.com blog / journal (.md framework from S3 bucket)
