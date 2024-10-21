@@ -1,3 +1,4 @@
+#rename this as site.ini and updated your session and openai keys
 [LEVEL]
 DEBUG = True
 
