@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="row">
+      <div class="full column" style="margin-top: 50px;">
+        <h1>CozyRAG</h1>
+        <h5>Retrieval-Augmented Generation for Cozy Builders</h5>
+      </div>
+    </div>
+
+    <div id="result">
+    <div class="row">
+      <div class="full columns">
+        <h3>Jobs</h3>
+        <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Tokens In</th>
+                <th>Tokens Out</th>
+                <th>Elapsed</th>
+                <th>Num Docs</th>
+                <th>Avg Score</th>
+                <th>Query</th>
+                <th>Answer</th>
+            </tr>
+            </thead>
+            <tbody>
+    {% for job in jobs %}
+                <tr style="line-height: .80;">
+                    <td>{{ job['email'] }}</td>
+                    <td>{{ job['result']['prompt tokens'] }}</td>
+                    <td>{{ job['result']['completion tokens'] }}</td>
+                    <td>{{ job['elapsed'] | round(2) }}</td>
+                    <td>{{ job['result']['number provided docs'] }}</td>
+                    <td>{{ job['result']['average score'] }}</td>
+                    <td>{{ job['query']|truncate(100) }}</td>
+                    <td><a href="{{url_for('cozyrag_processid', process_id=job['process_id'])}}">
+                            {{ job['result']['answer']|truncate(20) }}</a></td>
+                </tr>
+
+    {% endfor %}
+            </tbody>
+        </table>        
+      </div>
+    </div>
+    </div>
+
+{% endblock %}

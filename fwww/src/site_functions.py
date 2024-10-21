@@ -33,7 +33,6 @@ def url_from_source(source):
                  "https://groups.google.com/g/cozy_builders/c/"]
     
     originid, code = extract_originid_from_source(source)
-    print(f"{source} {originid} {code}")
     if code == 0:
         return (base_urls[code]+originid,f"AeroElectric Connection page {originid}")
     elif code == 1:
@@ -52,9 +51,17 @@ def get_process_id(nChars):
     unique_key = ''.join(random.choice(characters) for _ in range(nChars))
     return(unique_key)
 
+def get_job_path(directory, processId=None, filename=None):
+    if not filename:
+        file_path = os.path.join(directory, processId + ".json")
+    else:
+        file_path = os.path.join(directory, filename)
+    return file_path
+
 def new_question(input, directory, nIdLen):
     processId = get_process_id(nIdLen)
     jsonFilePath = os.path.join(directory, processId + ".json")
+    input['process_id'] = processId
     input['status'] = 'new'
     input['created'] = time.time()
     # Save the dictionary to a JSON file
@@ -64,12 +71,9 @@ def new_question(input, directory, nIdLen):
 
 def get_process_info(directory, processId=None, filename=None ):
     data = {}
-    if not filename:
-        file_path = os.path.join(directory, processId + ".json")
-    else:
-        file_path = os.path.join(directory, filename)
+    job_path = get_job_path(directory, processId, filename)
     try:
-        with open_with_lock(file_path, 'r') as f:
+        with open_with_lock(job_path, 'r') as f:
             try:
                 return json.load(f)
             except json.JSONDecodeError as e:
@@ -78,19 +82,22 @@ def get_process_info(directory, processId=None, filename=None ):
     except IOError as e:
          print(f"Error processing JSON file: {filename} {e}")
          return data
+    
+def get_all_jobs_info(directory):
+    aJobInfo = []
+    for filename in os.listdir(directory):
+        aJobInfo.append(get_process_info(directory,filename=filename))
+    return sorted(aJobInfo, key=lambda x: x['created'], reverse=True)   
 
 #####
 #  Write process dictionary to process file        
 #####
 def update_process_info(info, directory, processId=None, filename=None ):
-    if not filename:
-        file_path = os.path.join(directory, processId + ".json")
-    else:
-        file_path = os.path.join(directory, filename)
+    job_path = get_job_path(directory, processId, filename)
     info['update_time'] = time.time()
     try:
         # Save the dictionary to a JSON file
-        with open_with_lock(file_path, "w") as f:
+        with open_with_lock(job_path, "w") as f:
             json.dump(info, f)
 
     except IOError as e:
@@ -101,16 +108,9 @@ def update_process_info(info, directory, processId=None, filename=None ):
 #####
 def update_process_status(status, directory, processId=None, filename=None ):
     data = {}
-    if not filename:
-        file_path = os.path.join(directory, processId + ".json")
-    else:
-        file_path = os.path.join(directory, filename)
-
     data = get_process_info(directory, processId, filename)
-
     data["status"] = status
     data[ status + "_time"] = time.time()
-
     update_process_info(data, directory, processId, filename )
     return data
 

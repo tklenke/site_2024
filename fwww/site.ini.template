@@ -1,0 +1,14 @@
+[LEVEL]
+DEBUG = True
+
+[PATHS]
+JOBS_DIR = /app/jobs
+
+[KEYS]
+SESSION = secret_session_key_here
+OPENAI = put open ai key here
+[RAG]
+USE_GPT = False
+MAX_QUERY_LEN = 512
+MAX_INPUT_LEN = 75
+PROCESS_ID_LEN = 10

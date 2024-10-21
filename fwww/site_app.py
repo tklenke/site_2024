@@ -1,25 +1,29 @@
 # app.py or app/__init__.py
 from flask import Flask, render_template, request, url_for, flash, redirect, \
                   jsonify, session
-import time, os, json, queue
+import time, os, json, queue, configparser
 from src.llm_functions import FileProcessorThread
-from src.site_functions import sanitize, new_question, get_process_info, url_from_source
+from src.site_functions import sanitize, new_question, get_process_info, \
+             url_from_source, get_all_jobs_info
 import markdown
 
+INI_PATH = './site.ini'
 
 app = Flask(__name__)
 
-app.config.from_object('config')
-# Now we can access the configuration variables via app.config["VAR_NAME"].
-app.config["DEBUG"]
+### Load MiFrame Configuration
+if not os.path.exists(INI_PATH):
+    print(f"Can't find config file {INI_PATH}")
+    exit()
+cfg = configparser.ConfigParser()
+cfg.read(INI_PATH)
+app.debug = cfg.getboolean('LEVEL','DEBUG')
+app.secret_key = cfg.get('KEYS','SESSION')
 #TODO get this from OS or Config. Maybe use same shell script that makes OPENAI key.
-app.config['SECRET_KEY'] = 'mysecretkey123321'
-app.config['MAX_QUERY_LEN'] = 512
-app.config['MAX_INPUT_LEN'] = 75
-app.config['JOBS_DiR'] = '/app/jobs'
-app.config['PROCESS_ID_LEN'] = 10
+
 FPQueue = queue.Queue()
-FPThread = FileProcessorThread(app.config['JOBS_DiR'],FPQueue)
+FPThread = FileProcessorThread(cfg.get('PATHS','JOBS_DiR'), FPQueue, cfg.getboolean('RAG','USE_GPT'), \
+                               cfg.get('KEYS','OPENAI'))
 FPQueue.put("startup...checking all jobs")
 Md = markdown.Markdown()
 
@@ -47,9 +51,9 @@ def cozyrag_query():
 
         if not query:
             flash('Question is required.')
-        elif len(query) > app.config['MAX_QUERY_LEN']:
-            flash(f"Questions limited to {app.config['MAX_QUERY_LEN']} characters. Please rephrase.")
-        elif email and len(email) > app.config['MAX_INPUT_LEN']:
+        elif len(query) > cfg.getint('RAG','MAX_QUERY_LEN'):
+            flash(f"Questions limited to {cfg.getint('RAG','MAX_QUERY_LEN')} characters. Please rephrase.")
+        elif email and len(email) > cfg.getint('RAG','MAX_INPUT_LEN'):
             flash("Email address malformed.")
         else:
             session['query'] = query
@@ -64,21 +68,31 @@ def cozyrag_answer():
     processInput = {}
     processInput['query'] = session['query']
     processInput['email'] = session.get('email')
-    session['process_id'] = new_question(processInput, app.config['JOBS_DiR'], app.config['PROCESS_ID_LEN'])
+    session['process_id'] = new_question(processInput, cfg.get('PATHS','JOBS_DiR'), cfg.getint('RAG','PROCESS_ID_LEN'))
     FPQueue.put(session['process_id'])
     return render_template('cozyrag_answer.html', user_input=processInput)
 
 @app.route("/cozyrag/<string:process_id>/status")
 def cozyrag_status(process_id):
-    data = get_process_info(app.config['JOBS_DiR'], process_id)
-    elapsed = time.time() - float(data['created'])
-    data['elapsed'] = f"{elapsed:.2f}"
+    data = get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id)
+    cur_time = time.time() - data['created'] 
 
     if data['status'] == 'complete':
         data['result_html'] = render_template('cozyrag_results.html', results=data)
     else:
-        data['status_text'] = "Status: " + data['status'] + "." * (int(elapsed) % 10)
+        data['status_text'] = "Status: " + data['status'] + "." * (int(cur_time) % 10)
     return jsonify(data)
+
+@app.route("/cozyrag/<string:process_id>/processid")
+def cozyrag_processid(process_id):
+    data = get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id)
+    return render_template('cozyrag_results.html', results=data)
+
+@app.route("/cozyrag/jobs")
+def cozyrag_jobs():
+    aJobsInfo = get_all_jobs_info(cfg.get('PATHS','JOBS_DiR'))
+    return render_template('cozyrag_jobs.html',jobs=aJobsInfo)
+
 
 # ------ Context Processor for use in templates
 @app.context_processor

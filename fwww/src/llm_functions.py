@@ -4,11 +4,9 @@ from src.site_functions import get_process_info, update_process_status, update_p
 
 #--------- CONSTANTs -------------
 embedModel = "all-minilm"
-KEY = os.environ.get("OPENAI_KEY")
 MODEL = "gpt-4o-mini"
 chromahost = "chroma-rag"
 ollamahost = "http://ollama-rag:11434"
-GET_GPT = False
 lorem_ipsum_string = """\n**Lorem ipsum dolor sit amet**, *consectetur adipiscing elit*, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.  \nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\n> *"Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."*\n\n- Excepteur sint occaecat cupidatat non proident,\n- Sunt in culpa qui officia deserunt mollit anim id est laborum."""
 
 MAX_DISTANCE = .45
@@ -34,64 +32,11 @@ def get_min_relevant_response(results,fMaxDistance,nMinDocs):
             r = i
     return r
 
-def process_question(question):
-    t0 = time.time()
-    r = {}  #results
-    #open required connections
-    openaiclient = openai.OpenAI(api_key=KEY,)
-    chromaclient = chromadb.HttpClient(host=chromahost)
-    ollamaclient = ollama.Client(ollamahost)
-    #get chromacollection
-    collection = chromaclient.get_collection(embedModel) #, metadata={"hnsw:space": "cosine"}  )
-
-    #embed the question
-    queryembed = ollamaclient.embed(model=embedModel, input=question)['embeddings']
-    #get related documents
-    rQuery = collection.query(query_embeddings=queryembed, n_results=MAX_DOCUMENTS)
-    #prune related documents
-    nDocs = get_min_relevant_response(rQuery,MAX_DISTANCE,MIN_DOCUMENTS)
-    #construct the prompt
-    relateddocs = '\n\n'.join(rQuery['documents'][0][:nDocs])
-    prompt = f"{initial_prompt} {question} {secondary_prompt} {relateddocs}"
-
-    if GET_GPT:
-        #ask the model
-        completion = openaiclient.chat.completions.create(model=MODEL,messages=[{"role": "user", "content": prompt}])
-        r['answer'] = completion.choices[0].message.content
-        r['model'] = completion.model
-        r['prompt tokens'] = completion.usage.prompt_tokens
-        r['completion tokens'] = completion.usage.completion_tokens
-    else:
-        #Fake it
-        r['answer'] = lorem_ipsum_string
-        r['model'] = 'Did not evaluate at GPT'
-        r['prompt tokens'] = len(question.split())
-        r['completion tokens'] = len(r['answer'].split())
-
-    #capture and return the results
-    r['time'] = time.time()-t0
-
-    r['number provided docs'] = nDocs
-    distAvg = sum(rQuery['distances'][0][:nDocs]) / nDocs
-    r['average score'] = f"{(1. - distAvg):.2f}"
-    r['provided_docs'] = []
-    r['related_docs'] = []
-    for i, id in enumerate(rQuery['ids'][0]):
-        dDoc = {}
-        dDoc['id'] = id
-        dDoc['score'] = f"{(1.0 - rQuery['distances'][0][i]):.2f}"
-        dDoc['source'] = rQuery['metadatas'][0][i]['source']
-        if i < nDocs:
-            r['provided_docs'].append(dDoc)
-        else:
-           r['related_docs'].append(dDoc) 
-    return r
-
 # ---- FILE PROCESSING THREAD
 class FileProcessorThread(threading.Thread):
     instance = None
 
-    def __init__(self, job_path, job_queue):
+    def __init__(self, job_path, job_queue, use_gpt, openai_key):
         if FileProcessorThread.instance:
             raise RuntimeError("Thread already running")
         else:
@@ -101,8 +46,63 @@ class FileProcessorThread(threading.Thread):
         self.daemon = True
         self.job_path = job_path
         self.job_queue = job_queue
+        self.use_gpt = use_gpt
+        self.openai_key = openai_key
         super().__init__()
         self.start()  # Start the thread immediately
+
+    def process_question(self, question):
+        t0 = time.time()
+        r = {}  #results
+        #open required connections
+        openaiclient = openai.OpenAI(api_key=self.openai_key,)
+        chromaclient = chromadb.HttpClient(host=chromahost)
+        ollamaclient = ollama.Client(ollamahost)
+        #get chromacollection
+        collection = chromaclient.get_collection(embedModel) #, metadata={"hnsw:space": "cosine"}  )
+
+        #embed the question
+        queryembed = ollamaclient.embed(model=embedModel, input=question)['embeddings']
+        #get related documents
+        rQuery = collection.query(query_embeddings=queryembed, n_results=MAX_DOCUMENTS)
+        #prune related documents
+        nDocs = get_min_relevant_response(rQuery,MAX_DISTANCE,MIN_DOCUMENTS)
+        #construct the prompt
+        relateddocs = '\n\n'.join(rQuery['documents'][0][:nDocs])
+        prompt = f"{initial_prompt} {question} {secondary_prompt} {relateddocs}"
+
+        if self.use_gpt:
+            #ask the model
+            completion = openaiclient.chat.completions.create(model=MODEL,messages=[{"role": "user", "content": prompt}])
+            r['answer'] = completion.choices[0].message.content
+            r['model'] = completion.model
+            r['prompt tokens'] = completion.usage.prompt_tokens
+            r['completion tokens'] = completion.usage.completion_tokens
+        else:
+            #Fake it
+            r['answer'] = lorem_ipsum_string
+            r['model'] = 'Did not evaluate at GPT'
+            r['prompt tokens'] = len(question.split())
+            r['completion tokens'] = len(r['answer'].split())
+
+        #capture and return the results
+        r['time'] = time.time()-t0
+
+        r['number provided docs'] = nDocs
+        distAvg = sum(rQuery['distances'][0][:nDocs]) / nDocs
+        r['average score'] = f"{(1. - distAvg):.2f}"
+        r['provided_docs'] = []
+        r['related_docs'] = []
+        for i, id in enumerate(rQuery['ids'][0]):
+            dDoc = {}
+            dDoc['id'] = id
+            dDoc['score'] = f"{(1.0 - rQuery['distances'][0][i]):.2f}"
+            dDoc['source'] = rQuery['metadatas'][0][i]['source']
+            if i < nDocs:
+                r['provided_docs'].append(dDoc)
+            else:
+                r['related_docs'].append(dDoc) 
+        return r
 
     def run(self):
         processedJobs = []
@@ -125,10 +125,11 @@ class FileProcessorThread(threading.Thread):
                     update_process_status("error",filename=filename, directory=self.job_path)
                     continue
                 #run
-                result = process_question(data['query'])
+                result = self.process_question(data['query'])
                 data["result"] = result
                 #set status to completed
                 data['status'] = 'complete'
                 data['complete_time'] = time.time()
+                data['elapsed'] = data['complete_time'] - data['created']
                 update_process_info(data, filename=filename, directory=self.job_path)
                 processedJobs.append(filename)

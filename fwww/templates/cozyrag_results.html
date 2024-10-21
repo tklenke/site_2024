@@ -21,7 +21,7 @@
     {% for doc in results['result']['provided_docs'] %}
                 <tr style="line-height: .5;">
                     <td>{{ doc['score'] }}</td>
-                    <td>{{ originid_anchor(doc['source'])|safe }} {{doc['source']}}</td>
+                    <td>{{ originid_anchor(doc['source'])|safe }}</td>
                 </tr>
 
     {% endfor %}
@@ -44,7 +44,7 @@
     {% for doc in results['result']['related_docs'] %}
                 <tr style="line-height: .5;">
                     <td>{{ doc['score'] }}</td>
-                    <td>{{ originid_anchor(doc['source'])|safe }} {{doc['source']}}</td>
+                    <td>{{ originid_anchor(doc['source'])|safe }}</td>
                 </tr>
     {% endfor %}
             </tbody>
