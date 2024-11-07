@@ -6,10 +6,22 @@ DEBUG = True
 JOBS_DIR = /app/jobs
 
 [KEYS]
-SESSION = secret_session_key_here
-OPENAI = put open ai key here
+SESSION = yourkey
+OPENAI = yourkey
+
 [RAG]
 USE_GPT = False
 MAX_QUERY_LEN = 512
 MAX_INPUT_LEN = 75
 PROCESS_ID_LEN = 10
+MAX_DISTANCE = .45
+MIN_DOCUMENTS = 5
+MAX_DOCUMENTS = 20
+
+[HOSTS]
+OLLAMA = http://ollama-rag:11434
+CHROMA = chroma-rag
+
+[MODELS]
+EMBED = nomic-embed-text
+LLM = gpt-4o-mini

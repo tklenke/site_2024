@@ -23,7 +23,11 @@ app.secret_key = cfg.get('KEYS','SESSION')
 
 FPQueue = queue.Queue()
 FPThread = FileProcessorThread(cfg.get('PATHS','JOBS_DiR'), FPQueue, cfg.getboolean('RAG','USE_GPT'), \
-                               cfg.get('KEYS','OPENAI'))
+                               cfg.get('KEYS','OPENAI'), cfg.get('HOSTS','CHROMA'), cfg.get('HOSTS','OLLAMA'))
+FPThread.set_models(cfg.get('MODELS','EMBED'), cfg.get('MODELS','LLM'))
+FPThread.set_prompts(cfg.get('PROMPTS','PREFIX'), cfg.get('PROMPTS','INITIAL'), cfg.get('PROMPTS','SECONDARY'))
+FPThread.set_docs_params(cfg.getfloat('RAG','MAX_DISTANCE'), cfg.getint('RAG','MIN_DOCUMENTS'), cfg.getint('RAG','MAX_DOCUMENTS'))
+
 FPQueue.put("startup...checking all jobs")
 Md = markdown.Markdown()
 

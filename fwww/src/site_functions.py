@@ -6,6 +6,21 @@ def sanitize(txt):
     # my santize functions for unknown text
     return Markup(txt)
 
+def dedupe_list_of_docs(data):
+    deduped = {}
+
+    for entry in data:
+        key3 = entry["source"]
+        
+        # Check if key3 is already in the deduped dictionary
+        if key3 not in deduped or entry["score"] > deduped[key3]["score"]:
+            # Update deduped dictionary with entry having the highest key2 value for key3
+            deduped[key3] = {"id": entry["id"], "score": entry["score"]}
+    
+    # Convert the deduped dictionary back to a list of dicts
+    return [{"id": v["id"], "score": v["score"], "source": k} for k, v in deduped.items()]
+
+
 
 def extract_originid_from_source(filepath):
   #Returns: A tuple containing the extracted number and a code indicating the matched pattern:
@@ -14,34 +29,34 @@ def extract_originid_from_source(filepath):
   #    - 2: If the "news/news_" pattern matched.
   #    - 3: If the "msgs/" pattern matched.
     patterns = {
-        0: r"/aeroelectric/page(?P<originid>\d+)",
-        1: r"/news/news_(?P<originid>\d+)",
-        2: r"/msgs/[A-Za-z0-9_\-]+/(?P<originid>[A-Za-z0-9_\-]+)\.md"
+        1: r"/aeroelectric/page(?P<originid>\d+)",
+        2: r"/news/news_(?P<originid>\d+)",
+        3: r"/msgs/[A-Za-z0-9_\-]+/(?P<originid>[A-Za-z0-9_\-]+)\.txt"
     }
     for code, pattern in patterns.items():
         match = re.search(pattern, filepath)
         if match:
             return match.group("originid"), code
-    return "", 0
+    return filepath, 0
 
 def url_from_source(source):
     # ./data/news/news_78.txt
     # ./data/msgs/H/Hmt8MVDA4C4.md
     # ./data/aeroelectric/page42.txt
-    base_urls = [ "http://aeroelectric.com/Connection/R12%20Searchable%20Merged%20Chapters.pdf#page=", \
+    base_urls = ["http://aeroelectric.com/Connection/R12%20Searchable%20Merged%20Chapters.pdf#page=", \
                  "http://cozybuilders.org/newsletters/news_", \
                  "https://groups.google.com/g/cozy_builders/c/"]
     
     originid, code = extract_originid_from_source(source)
-    if code == 0:
-        return (base_urls[code]+originid,f"AeroElectric Connection page {originid}")
-    elif code == 1:
-        if int(originid) < 76:
-            return (base_urls[code]+originid+".html",f"Cozy Newsletters Number {originid}")
-        else:
-            return (base_urls[code]+originid+".pdf",f"Cozy Newsletters Number {originid}")
+    if code == 1:
+        return (base_urls[code-1]+originid,f"AeroElectric Connection page {originid}")
     elif code == 2:
-        return (base_urls[code]+originid,f"Cozy Builders Google Group Message {originid}")
+        if int(originid) < 76:
+            return (base_urls[code-1]+originid+".html",f"Cozy Newsletters Number {originid}")
+        else:
+            return (base_urls[code-1]+originid+".pdf",f"Cozy Newsletters Number {originid}")
+    elif code == 3:
+        return (base_urls[code-1]+originid,f"Cozy Builders Google Group Message {originid}")
     #else code 0    
     return (" ",f"Source Document {source} Not Found")
 

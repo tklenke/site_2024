@@ -1,17 +1,10 @@
 import chromadb, ollama, openai
 import threading, os, time, json, queue
-from src.site_functions import get_process_info, update_process_status, update_process_info
+from src.site_functions import get_process_info, update_process_status, update_process_info, dedupe_list_of_docs
 
 #--------- CONSTANTs -------------
-embedModel = "all-minilm"
-MODEL = "gpt-4o-mini"
-chromahost = "chroma-rag"
-ollamahost = "http://ollama-rag:11434"
-lorem_ipsum_string = """\n**Lorem ipsum dolor sit amet**, *consectetur adipiscing elit*, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.  \nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\n> *"Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."*\n\n- Excepteur sint occaecat cupidatat non proident,\n- Sunt in culpa qui officia deserunt mollit anim id est laborum."""
 
-MAX_DISTANCE = .45
-MIN_DOCUMENTS = 5
-MAX_DOCUMENTS = 20
+lorem_ipsum_string = """\n**Lorem ipsum dolor sit amet**, *consectetur adipiscing elit*, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.  \nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\n> *"Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."*\n\n- Excepteur sint occaecat cupidatat non proident,\n- Sunt in culpa qui officia deserunt mollit anim id est laborum."""
 
 initial_prompt ="""You are an aerospace engineer specializing in amatuer-built aircraft. Don't restate this. If you don't know the answer, 
     just say that you don't know, don't try to make up an answer. """
@@ -36,7 +29,7 @@ def get_min_relevant_response(results,fMaxDistance,nMinDocs):
 class FileProcessorThread(threading.Thread):
     instance = None
 
-    def __init__(self, job_path, job_queue, use_gpt, openai_key):
+    def __init__(self, job_path, job_queue, use_gpt, openai_key, chromahost, ollamahost):
         if FileProcessorThread.instance:
             raise RuntimeError("Thread already running")
         else:
@@ -47,33 +40,54 @@ class FileProcessorThread(threading.Thread):
         self.job_path = job_path
         self.job_queue = job_queue
         self.use_gpt = use_gpt
-        self.openai_key = openai_key
+        
+        #open required connections
+        self.openaiclient = openai.OpenAI(api_key=openai_key,)
+        self.chromaclient = chromadb.HttpClient(host=chromahost)
+        self.ollamaclient = ollama.Client(ollamahost)
+
+        self.set_models()
+        self.set_docs_params()
+        self.set_prompts()
         super().__init__()
         self.start()  # Start the thread immediately
+
+    def set_models(self, embed="nomic-embed-text", llm="gpt-4o-mini"):
+        self.embed_model = embed
+        self.llm_model = llm
+        return
+    
+    def set_docs_params(self, max_distance=.45, min_documents=5, max_documents=20):
+        self.max_distance = max_distance
+        self.min_documents = min_documents
+        self.max_documents = max_documents
+        return
+    
+    def set_prompts(self, prefix="", initial_prompt="", secondary_prompt=" Use the following pieces of context to answer the users question. ----- "):
+        self.embed_prefix = prefix
+        self.initial_prompt = initial_prompt
+        self.secondary_prompt = secondary_prompt
+        return
 
     def process_question(self, question):
         t0 = time.time()
         r = {}  #results
-        #open required connections
-        openaiclient = openai.OpenAI(api_key=self.openai_key,)
-        chromaclient = chromadb.HttpClient(host=chromahost)
-        ollamaclient = ollama.Client(ollamahost)
-        #get chromacollection
-        collection = chromaclient.get_collection(embedModel) #, metadata={"hnsw:space": "cosine"}  )
 
+        #get chromacollection
+        collection = self.chromaclient.get_collection(name=self.embed_model) #, metadata={"hnsw:space": "cosine"}  )
         #embed the question
-        queryembed = ollamaclient.embed(model=embedModel, input=question)['embeddings']
+        queryembed = self.ollamaclient.embed(model=self.embed_model, input=self.embed_prefix + question)['embeddings']
         #get related documents
-        rQuery = collection.query(query_embeddings=queryembed, n_results=MAX_DOCUMENTS)
+        rQuery = collection.query(query_embeddings=queryembed, n_results=self.max_documents)
         #prune related documents
-        nDocs = get_min_relevant_response(rQuery,MAX_DISTANCE,MIN_DOCUMENTS)
+        nDocs = get_min_relevant_response(rQuery,self.max_distance,self.min_documents)
         #construct the prompt
         relateddocs = '\n\n'.join(rQuery['documents'][0][:nDocs])
         prompt = f"{initial_prompt} {question} {secondary_prompt} {relateddocs}"
 
         if self.use_gpt:
             #ask the model
-            completion = openaiclient.chat.completions.create(model=MODEL,messages=[{"role": "user", "content": prompt}])
+            completion = self.openaiclient.chat.completions.create(model=self.llm_model,messages=[{"role": "user", "content": prompt}])
             r['answer'] = completion.choices[0].message.content
             r['model'] = completion.model
             r['prompt tokens'] = completion.usage.prompt_tokens
@@ -101,7 +115,9 @@ class FileProcessorThread(threading.Thread):
             if i < nDocs:
                 r['provided_docs'].append(dDoc)
             else:
-                r['related_docs'].append(dDoc) 
+                r['related_docs'].append(dDoc)
+        r['provided_docs'] = dedupe_list_of_docs(r['provided_docs'])
+        r['related_docs'] = dedupe_list_of_docs(r['related_docs'])
         return r
 
     def run(self):
@@ -133,3 +149,25 @@ class FileProcessorThread(threading.Thread):
                 data['elapsed'] = data['complete_time'] - data['created']
                 update_process_info(data, filename=filename, directory=self.job_path)
                 processedJobs.append(filename)
+
+if __name__ == "__main__":
+    import time, os, json, queue, configparser
+    INI_PATH = './site.ini'
+
+    ### Load MiFrame Configuration
+    if not os.path.exists(INI_PATH):
+        print(f"Can't find config file {INI_PATH}")
+        exit()
+    cfg = configparser.ConfigParser()
+    cfg.read(INI_PATH)
+
+    FPQueue = queue.Queue()
+    FPThread = FileProcessorThread(cfg.get('PATHS','JOBS_DiR'), FPQueue, cfg.getboolean('RAG','USE_GPT'), \
+                                cfg.get('KEYS','OPENAI'), "localhost", "http://localhost:11434")
+    FPThread.set_models(cfg.get('MODELS','EMBED'), cfg.get('MODELS','LLM'))
+    FPThread.set_prompts(cfg.get('PROMPTS','PREFIX'), cfg.get('PROMPTS','INITIAL'), cfg.get('PROMPTS','SECONDARY'))
+    FPThread.set_docs_params(cfg.getfloat('RAG','MAX_DISTANCE'), cfg.getint('RAG','MIN_DOCUMENTS'), cfg.getint('RAG','MAX_DOCUMENTS'))
+    print(f"asking question")
+    r = FPThread.process_question("how many seats does the cozy have")
+
+    print(r)
