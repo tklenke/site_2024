@@ -3,9 +3,52 @@
         <h3>Results</h3>
         {{ markdown_to_html(results['result']['answer'])|safe }}
         {% include "disclaimer_min.html" %}
-        <a class="button button-primary" href="{{ url_for('cozyrag_query') }}">Ask another question</a>
     </div>
 </div>
+
+<div class="row">
+    <div class="ten columns"></div>
+        <strong>How useful was this answer?</strong>
+    </div>
+</div>
+
+<form method="POST" action="/submit_feedback">
+<div class="row">
+    <div class="one column">
+            <label>
+                <input type="radio" name="satisfaction" value="n/a" checked style="margin-bottom: .1rem;"> N/A
+            </label>
+    </div><div class="one column">
+            <label>
+                <input type="radio" name="satisfaction" value="awesome" style="margin-bottom: .1rem;"> Awesome
+            </label>
+    </div><div class="one column">
+            <label>
+                <input type="radio" name="satisfaction" value="useful" style="margin-bottom: .1rem;"> Useful
+            </label>
+    </div><div class="one column">
+             <label>
+                <input type="radio" name="satisfaction" value="meh" style="margin-bottom: .1rem;"> Meh/Ok
+            </label>
+    </div><div class="one column">
+            <label>
+                <input type="radio" name="satisfaction" value="useless" style="margin-bottom: .1rem;"> Useless
+            </label>
+    </div><div class="one column">
+            <label>
+                <input type="radio" name="satisfaction" value="dangerous" style="margin-bottom: .1rem;"> Dangerous
+            </label>
+    </div>
+</div>
+<div class="row">
+    <div class="one column">
+        &nbsp;
+    </div>
+    <div class="five columns">
+        <button type="submit" class="button button-primary">Ask another question</button>
+    </div>
+</div>
+</form>
 
 <div class="row">
     <div class="full column">

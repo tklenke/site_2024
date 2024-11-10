@@ -1,6 +1,8 @@
 from markupsafe import Markup, escape
 import threading, os, string, random, time, json, re
 from src.open_with_lock import open_with_lock
+from flask import Flask, render_template, request, url_for, flash, redirect, \
+                  jsonify, session
 
 def sanitize(txt):
     # my santize functions for unknown text
@@ -20,7 +22,13 @@ def dedupe_list_of_docs(data):
     # Convert the deduped dictionary back to a list of dicts
     return [{"id": v["id"], "score": v["score"], "source": k} for k, v in deduped.items()]
 
-
+def render_markdown_file(mdfilepath):
+    # This could be cached for a more high traffic site
+    # Read the Markdown file
+    with open(mdfilepath, 'r') as f:
+        markdown_text = f.read()
+    # Render the HTML content in a template
+    return render_template('markdown.html', md_content=markdown_text)
 
 def extract_originid_from_source(filepath):
   #Returns: A tuple containing the extracted number and a code indicating the matched pattern:

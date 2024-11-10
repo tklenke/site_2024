@@ -3,7 +3,7 @@ services:
 
   nginx:
     image: nginx:latest
-    container_name: nginx_reverse_proxy
+    container_name: site_nginx
     ports:
       - "80:80"
       - "443:443"
@@ -11,6 +11,8 @@ services:
       - ./server/nginx_all_apps.conf:/etc/nginx/nginx.conf:ro
       - ./data/dokucozy:/var/www/dokucozy
       - ./data/dokuN657CZ:/var/www/dokuN657CZ
+      - ./server/certbot/www/:/var/www/certbot/:ro
+      - ./server/certbot/conf/live/:/var/www/ssl/:ro
     depends_on:
         - php1
         - php2
@@ -32,6 +34,7 @@ services:
     volumes:
       - ./fwww:/app/fwww
       - ./data/jobs:/app/jobs
+      - ./data/www:/app/www
     depends_on:
       - chroma-rag
       - ollama-rag

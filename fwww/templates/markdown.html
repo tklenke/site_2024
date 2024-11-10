@@ -1,0 +1,8 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="row">
+      <div class="full column" style="margin-top: 50px;">
+        {{ markdown_to_html(md_content)|safe }}
+      </div>
+    </div>
+{% endblock %}

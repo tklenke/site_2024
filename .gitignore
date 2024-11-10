@@ -3,6 +3,7 @@ data/
 .env_openai_key
 export_openai_key.sh
 site.ini
+server/certbot/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

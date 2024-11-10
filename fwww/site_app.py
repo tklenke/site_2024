@@ -4,12 +4,15 @@ from flask import Flask, render_template, request, url_for, flash, redirect, \
 import time, os, json, queue, configparser
 from src.llm_functions import FileProcessorThread
 from src.site_functions import sanitize, new_question, get_process_info, \
-             url_from_source, get_all_jobs_info
+             url_from_source, get_all_jobs_info, render_markdown_file
 import markdown
 
 INI_PATH = './site.ini'
 
 app = Flask(__name__)
+
+#give chromadb a little time to start
+time.sleep(2)
 
 ### Load MiFrame Configuration
 if not os.path.exists(INI_PATH):
@@ -19,7 +22,7 @@ cfg = configparser.ConfigParser()
 cfg.read(INI_PATH)
 app.debug = cfg.getboolean('LEVEL','DEBUG')
 app.secret_key = cfg.get('KEYS','SESSION')
-#TODO get this from OS or Config. Maybe use same shell script that makes OPENAI key.
+app.markdown_dir = cfg.get('PATHS','WWW_DiR')
 
 FPQueue = queue.Queue()
 FPThread = FileProcessorThread(cfg.get('PATHS','JOBS_DiR'), FPQueue, cfg.getboolean('RAG','USE_GPT'), \
@@ -34,7 +37,11 @@ Md = markdown.Markdown()
 # ----------- Main Routes
 @app.route("/")
 def home():
-    return render_template('home.html')
+    return render_markdown_file(os.path.join(app.markdown_dir,"home.md"))
+
+@app.route("/links")
+def links():
+    return render_markdown_file(os.path.join(app.markdown_dir,"links.md"))
 
 @app.route("/cozy")
 def cozy_home():
