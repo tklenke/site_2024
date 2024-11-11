@@ -37,15 +37,19 @@ Md = markdown.Markdown()
 # ----------- Main Routes
 @app.route("/")
 def home():
-    return render_markdown_file(os.path.join(app.markdown_dir,"home.md"))
+    return show_markdown_page("home")
 
 @app.route("/links")
 def links():
-    return render_markdown_file(os.path.join(app.markdown_dir,"links.md"))
+    return show_markdown_page("links")
 
 @app.route("/cozy")
 def cozy_home():
-    return render_template('cozy_home.html')
+    return show_markdown_page("cozy")
+
+@app.route('/<string:md_file>/show')
+def show_markdown_page(md_file):
+    return render_markdown_file(os.path.join(app.markdown_dir,md_file+".md")) 
 
 # ---------- Cozy RAG and Search Functions
 @app.route("/cozyrag")
@@ -103,7 +107,6 @@ def cozyrag_processid(process_id):
 def cozyrag_jobs():
     aJobsInfo = get_all_jobs_info(cfg.get('PATHS','JOBS_DiR'))
     return render_template('cozyrag_jobs.html',jobs=aJobsInfo)
-
 
 # ------ Context Processor for use in templates
 @app.context_processor
