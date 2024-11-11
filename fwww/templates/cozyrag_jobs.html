@@ -15,11 +15,12 @@
             <thead>
               <tr>
                 <th>Email</th>
-                <th>Tokens In</th>
-                <th>Tokens Out</th>
+                <th>Tokens<br>In</th>
+                <th>Tokens<br>Out</th>
                 <th>Elapsed</th>
-                <th>Num Docs</th>
-                <th>Avg Score</th>
+                <th>Num<br>Docs</th>
+                <th>Avg<br>Score</th>
+                <th>Satisfctn</th>
                 <th>Query</th>
                 <th>Answer</th>
             </tr>
@@ -27,12 +28,13 @@
             <tbody>
     {% for job in jobs %}
                 <tr style="line-height: .80;">
-                    <td>{{ job['email'] }}</td>
+                    <td>{{ safe_truncate(job['email'],5)  }}</td>
                     <td>{{ job['result']['prompt tokens'] }}</td>
                     <td>{{ job['result']['completion tokens'] }}</td>
                     <td>{{ job['elapsed'] | round(2) }}</td>
                     <td>{{ job['result']['number provided docs'] }}</td>
                     <td>{{ job['result']['average score'] }}</td>
+                    <td>{{ job['satisfaction'] }}</td>
                     <td>{{ job['query']|truncate(100) }}</td>
                     <td><a href="{{url_for('cozyrag_processid', process_id=job['process_id'])}}">
                             {{ job['result']['answer']|truncate(20) }}</a></td>

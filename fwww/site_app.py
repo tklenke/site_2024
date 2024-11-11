@@ -4,7 +4,8 @@ from flask import Flask, render_template, request, url_for, flash, redirect, \
 import time, os, json, queue, configparser
 from src.llm_functions import FileProcessorThread
 from src.site_functions import sanitize, new_question, get_process_info, \
-             url_from_source, get_all_jobs_info, render_markdown_file
+             set_process_info_key_value, url_from_source, get_all_jobs_info, \
+            render_markdown_file
 import markdown
 
 INI_PATH = './site.ini'
@@ -49,7 +50,11 @@ def cozy_home():
 
 @app.route('/<string:md_file>/show')
 def show_markdown_page(md_file):
-    return render_markdown_file(os.path.join(app.markdown_dir,md_file+".md")) 
+    mdfilepath = os.path.join(app.markdown_dir,md_file+".md")
+    if not os.path.exists(mdfilepath):
+        flash(f"Requested page: {md_file} is invalid")
+        return redirect(url_for('home'))
+    return render_markdown_file(mdfilepath) 
 
 # ---------- Cozy RAG and Search Functions
 @app.route("/cozyrag")
@@ -98,6 +103,12 @@ def cozyrag_status(process_id):
         data['status_text'] = "Status: " + data['status'] + "." * (int(cur_time) % 10)
     return jsonify(data)
 
+@app.route("/cozyrag/feedback", methods=('GET', 'POST'))
+def cozyrag_feedback():
+    satisfaction = request.form.get("satisfaction")
+    set_process_info_key_value('satisfaction',satisfaction,cfg.get('PATHS','JOBS_DiR'), session['process_id'])
+    return redirect(url_for('cozyrag_query'))
+
 @app.route("/cozyrag/<string:process_id>/processid")
 def cozyrag_processid(process_id):
     data = get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id)
@@ -121,6 +132,15 @@ def markdown_to_html_processor():
     def markdown_to_html(mdtxt):
         return Md.convert(mdtxt)
     return dict(markdown_to_html=markdown_to_html)
+
+# Define a custom truncate filter
+@app.context_processor
+def safe_truncate_processor():
+    def safe_truncate(text, length=100):
+        if text is None:
+            return ''  # Return an empty string if text is None
+        return text[:length] + '...' if len(text) > length else text
+    return dict(safe_truncate=safe_truncate)
 
 if __name__ == "__main__":
    app.run(host='0.0.0.0')

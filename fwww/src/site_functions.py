@@ -137,6 +137,12 @@ def update_process_status(status, directory, processId=None, filename=None ):
     update_process_info(data, directory, processId, filename )
     return data
 
+# set a key/value pair in the process info file and return as a dictionary
+def set_process_info_key_value( key, val, directory, processId=None, filename=None ):
+    data = get_process_info(directory, processId, filename)
+    data[key] = val
+    return update_process_info(data, directory, processId, filename)
+
 
 
 
