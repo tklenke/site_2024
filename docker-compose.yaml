@@ -12,7 +12,9 @@ services:
       - ./data/dokucozy:/var/www/dokucozy
       - ./data/dokuN657CZ:/var/www/dokuN657CZ
       - ./server/certbot/www/:/var/www/certbot/:ro
-      - ./server/certbot/conf/live/:/var/www/ssl/:ro
+      - ./server/certbot/conf/live/m24tom.com/:/var/www/ssl/:ro
+      #note that symlinks will not work so need to make sure that 
+      #after ssl certificate upgrade the actual .pem files are copied into this directory
     depends_on:
         - php1
         - php2

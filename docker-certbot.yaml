@@ -6,6 +6,6 @@ services:
       - ./server/certbot/conf/:/etc/letsencrypt/:rw
 
   #docker-compose -f docker-certbot.yaml run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ --dry-run -d m24tom.com
-  # note: i could not get certbot to word for a bit until i created .well-known/acme-challenge/ directories
+  # note: i could not get certbot to work for a bit until i created .well-known/acme-challenge/ directories
   # in /server/certbot/conf . I also make a test.html file in /server/certbot/conf/.well-known/acme-challenge/test.html
   # and made sure that nginx was serving that before running the certbot command above
