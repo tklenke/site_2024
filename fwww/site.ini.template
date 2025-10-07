@@ -4,6 +4,7 @@ DEBUG = True
 
 [PATHS]
 JOBS_DIR = /app/jobs
+WWW_DIR = /app/www
 
 [KEYS]
 SESSION = yourkey
@@ -25,3 +26,9 @@ CHROMA = chroma-rag
 [MODELS]
 EMBED = nomic-embed-text
 LLM = gpt-4o-mini
+
+[PROMPTS]
+PREFIX = search_query:
+INITIAL =
+SECONDARY = Use the following pieces of context to answer the users question:
+
