@@ -42,9 +42,12 @@ class FileProcessorThread(threading.Thread):
         self.use_gpt = use_gpt
         
         #open required connections
+        print(f"ch:{chromahost} oh:{ollamahost}")
         self.openaiclient = openai.OpenAI(api_key=openai_key,)
         self.chromaclient = chromadb.HttpClient(host=chromahost)
         self.ollamaclient = ollama.Client(ollamahost)
+
+        print(f"chroma collections:{self.chromaclient.list_collections()}")
 
         self.set_models()
         self.set_docs_params()
