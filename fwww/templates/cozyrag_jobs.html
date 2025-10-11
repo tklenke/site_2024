@@ -11,38 +11,60 @@
     <div class="row">
       <div class="full columns">
         <h3>Jobs</h3>
-        <table>
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Tokens<br>In</th>
-                <th>Tokens<br>Out</th>
-                <th>Elapsed</th>
-                <th>Num<br>Docs</th>
-                <th>Avg<br>Score</th>
-                <th>Satisfctn</th>
-                <th>Query</th>
-                <th>Answer</th>
-            </tr>
-            </thead>
-            <tbody>
+<table>
+  <thead>
+    {% if not column %}
+    <tr>
+      <th>Email</th>
+      <th>Tokens<br>In</th>
+      <th>Tokens<br>Out</th>
+      <th>Elapsed</th>
+      <th>Num<br>Docs</th>
+      <th>Avg<br>Score</th>
+      <th>Satisfctn</th>
+      <th>Query</th>
+      <th>Answer</th>
+    </tr>
+    {% else %}
+    <tr><th>{{ column|capitalize }}</th></tr>
+    {% endif %}
+  </thead>
+  <tbody>
     {% for job in jobs %}
-                <tr style="line-height: .80;">
-                    <td>{{ safe_truncate(job['email'],5)  }}</td>
-                    <td>{{ job['result']['prompt tokens'] }}</td>
-                    <td>{{ job['result']['completion tokens'] }}</td>
-                    <td>{{ job['elapsed'] | round(2) }}</td>
-                    <td>{{ job['result']['number provided docs'] }}</td>
-                    <td>{{ job['result']['average score'] }}</td>
-                    <td>{{ job['satisfaction'] }}</td>
-                    <td>{{ job['query']|truncate(100) }}</td>
-                    <td><a href="{{url_for('cozyrag_processid', process_id=job['process_id'])}}">
-                            {{ job['result']['answer']|truncate(20) }}</a></td>
-                </tr>
-
+      {% if not column %}
+      <tr style="line-height: .80;">
+        <td>{{ safe_truncate(job['email'],5) }}</td>
+        <td>{{ job['result']['prompt tokens'] }}</td>
+        <td>{{ job['result']['completion tokens'] }}</td>
+        <td>{{ job['elapsed'] | round(2) }}</td>
+        <td>{{ job['result']['number provided docs'] }}</td>
+        <td>{{ job['result']['average score'] }}</td>
+        <td>{{ job['satisfaction'] }}</td>
+        <td>{{ job['query']|truncate(100) }}</td>
+        <td><a href="{{ url_for('cozyrag_processid', process_id=job['process_id']) }}">
+              {{ job['result']['answer']|truncate(20) }}
+            </a></td>
+      </tr>
+      {% else %}
+      <tr>
+        <td>
+          {% if column == 'email' %}{{ safe_truncate(job['email'],5) }}
+          {% elif column == 'tokens_in' %}{{ job['result']['prompt tokens'] }}
+          {% elif column == 'tokens_out' %}{{ job['result']['completion tokens'] }}
+          {% elif column == 'elapsed' %}{{ job['elapsed'] | round(2) }}
+          {% elif column == 'num_docs' %}{{ job['result']['number provided docs'] }}
+          {% elif column == 'avg_score' %}{{ job['result']['average score'] }}
+          {% elif column == 'satisfaction' %}{{ job['satisfaction'] }}
+          {% elif column == 'query' %}{{ job['query'] }}
+          {% elif column == 'answer' %}
+                  {{ job['result']['answer'] }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
     {% endfor %}
-            </tbody>
-        </table>        
+  </tbody>
+</table>     
       </div>
     </div>
     </div>

@@ -32,3 +32,5 @@ PREFIX = search_query:
 INITIAL =
 SECONDARY = Use the following pieces of context to answer the users question:
 
+[OPTIONS]
+REVISE_AVAILABLE = True

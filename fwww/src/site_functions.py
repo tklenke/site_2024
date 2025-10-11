@@ -33,13 +33,17 @@ def render_markdown_file(mdfilepath):
 def extract_originid_from_source(filepath):
   #Returns: A tuple containing the extracted number and a code indicating the matched pattern:
   #    - 0: If no pattern matched.
-  #    - 1: If the "aeroelectric/page" pattern matched.
-  #    - 2: If the "news/news_" pattern matched.
-  #    - 3: If the "msgs/" pattern matched.
+  #    - 1: If the ae__ pattern matched. aeroelectric connection
+  #    - 2: If the news_" pattern matched. cozybuilders cozy newsletters
+  #    - 3: If the "cb__"  cozybuilders misc documents
+  #    - 4: If the "cp__" cozybuilders canard pusher newsletter
+  #    - 4: If the msgs pattern matched.
     patterns = {
-        1: r"/aeroelectric/page(?P<originid>\d+)",
-        2: r"/news/news_(?P<originid>\d+)",
-        3: r"/msgs/[A-Za-z0-9_\-]+/(?P<originid>[A-Za-z0-9_\-]+)\.txt"
+        1: r"ae__(?P<originid>\d+)",
+        2: r"news_(?P<originid>\d+)",
+        3: r"cb__(?P<originid>\S+)",
+        4: r"cp__(?P<originid>\S+)",
+        5: r"(?P<originid>[A-Za-z0-9_\-\_]+)"
     }
     for code, pattern in patterns.items():
         match = re.search(pattern, filepath)
@@ -47,12 +51,19 @@ def extract_originid_from_source(filepath):
             return match.group("originid"), code
     return filepath, 0
 
+def get_cb_path_from_id(id):
+    id = id.replace('_-_','/')
+    id = id.replace('___','.')
+    return id
+
 def url_from_source(source):
     # ./data/news/news_78.txt
     # ./data/msgs/H/Hmt8MVDA4C4.md
     # ./data/aeroelectric/page42.txt
-    base_urls = ["http://aeroelectric.com/Connection/R12%20Searchable%20Merged%20Chapters.pdf#page=", \
-                 "http://cozybuilders.org/newsletters/news_", \
+    base_urls = ["http://aeroelectric.com/Connection/R12%20Searchable%20Merged%20Chapters.pdf#page=", 
+                 "http://cozybuilders.org/newsletters/news_", 
+                 "http://cozybuilders.org/",
+                 "http://cozybuilders.org/Canard_Pusher/CPs_1_to_82_Sections.txt#",
                  "https://groups.google.com/g/cozy_builders/c/"]
     
     originid, code = extract_originid_from_source(source)
@@ -64,6 +75,10 @@ def url_from_source(source):
         else:
             return (base_urls[code-1]+originid+".pdf",f"Cozy Newsletters Number {originid}")
     elif code == 3:
+        return (base_urls[code-1]+get_cb_path_from_id(originid),f"Cozybuilders.org {originid}")
+    elif code == 4:
+        return (base_urls[code-1]+originid,f"Canard Pusher No. {originid}")
+    elif code == 5:
         return (base_urls[code-1]+originid,f"Cozy Builders Google Group Message {originid}")
     #else code 0    
     return (" ",f"Source Document {source} Not Found")
@@ -86,6 +101,24 @@ def new_question(input, directory, nIdLen):
     jsonFilePath = os.path.join(directory, processId + ".json")
     input['process_id'] = processId
     input['status'] = 'new'
+    input['created'] = time.time()
+    # Save the dictionary to a JSON file
+    with open_with_lock(jsonFilePath, "w") as f:
+        json.dump(input, f)
+    return processId
+
+def new_revision(prior_process_id, directory, nIdLen, question=None):
+    processId = get_process_id(nIdLen)
+    jsonFilePath = os.path.join(directory, processId + ".json")
+    #get the prior questions process info
+    input = get_process_info(directory, prior_process_id)
+    #but save it as new processId
+    input['process_id'] = processId
+    if question is None:
+        input['status'] = 'revise'
+    else:
+        input['query'] = question
+        input['status'] = 'followup'
     input['created'] = time.time()
     # Save the dictionary to a JSON file
     with open_with_lock(jsonFilePath, "w") as f:

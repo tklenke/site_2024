@@ -1,54 +1,82 @@
 <div class="row">
     <div class="ten columns">
+
+        {% if results['type'] == "revise" %}
+        <h3>Revised Results</h3>
+        {% elif results['type'] == "followup" %}
+        <h3>Follow Up Question Results</h3>
+        {% else %}
         <h3>Results</h3>
+        {% endif %}
         {{ markdown_to_html(results['result']['answer'])|safe }}
         {% include "disclaimer_min.html" %}
     </div>
 </div>
 
 <div class="row">
-    <div class="ten columns"></div>
+    <div class="ten columns">
+        <h5>Ask Another Question</h5>
+    </div>
+</div>
+<div class="row">
+    <div class="five columns">
+        <p>Click one of the buttons to the right to let us know how useful you believe this response to be.  
+            Your feedback will help us to do better.
+        </p>
+    </div>
+    <div class="five columns">
         <strong>How useful was this answer?</strong>
+        <form method="POST" action="/cozyrag/feedback">
+        <button class="button-primary" type="submit" name="satisfaction" value="perfect">Perfect</button>
+        <button class="button-primary"  type="submit" name="satisfaction" value="ok">OK</button>
+        <button class="button-primary"  type="submit" name="satisfaction" value="not_good">Not Good</button>
+        </form>
     </div>
 </div>
 
-<form method="POST" action="/cozyrag/feedback">
+{% if show_revise %}
 <div class="row">
-    <div class="one column">
-            <label>
-                <input type="radio" name="satisfaction" value="n/a" checked style="margin-bottom: .1rem;"> N/A
-            </label>
-    </div><div class="one column">
-            <label>
-                <input type="radio" name="satisfaction" value="awesome" style="margin-bottom: .1rem;"> Awesome
-            </label>
-    </div><div class="one column">
-            <label>
-                <input type="radio" name="satisfaction" value="useful" style="margin-bottom: .1rem;"> Useful
-            </label>
-    </div><div class="one column">
-             <label>
-                <input type="radio" name="satisfaction" value="meh" style="margin-bottom: .1rem;"> Meh/Ok
-            </label>
-    </div><div class="one column">
-            <label>
-                <input type="radio" name="satisfaction" value="useless" style="margin-bottom: .1rem;"> Useless
-            </label>
-    </div><div class="one column">
-            <label>
-                <input type="radio" name="satisfaction" value="dangerous" style="margin-bottom: .1rem;"> Dangerous
-            </label>
+    <div class="ten columns">
+        <h5>Revise This Response</h5>
     </div>
 </div>
 <div class="row">
-    <div class="one column">
-        &nbsp;
+    <div class="five columns">
+        <p>We will use a more advanced LLM model and more input data to revise this response. 
+            This will take a longer time and cost us a bit more. We're willing to give it a
+            shot if you are!
+        </p>
     </div>
     <div class="five columns">
-        <button type="submit" class="button button-primary">Ask another question</button>
+        <form method="POST" action="/cozyrag/revise">
+        <input class="button-primary" type="submit" value="Please Dig Deeper" class="button button-primary">
+        </form>
     </div>
 </div>
-</form>
+
+<div class="row">
+    <div class="ten columns">
+        <h5>Ask A Follow-up Question</h5>
+    </div>
+</div>
+<div class="row">
+    <div class="five columns">
+        <p>Ask a follow up question regarding this response. 
+            We will use a more advanced LLM model along with your question
+             and more input data to revise this response. 
+            This may take a bit longer so please be patient!
+        </p>
+    </div>
+    <div class="five columns">
+        <form method="POST" action="/cozyrag/followup">
+            <textarea class="u-full-width" name="question" 
+            placeholder="Your follow up question on this response."
+            style="min-height: 100px;">{{ request.form['question'] }}</textarea>
+            <button type="submit" class="button-primary">Submit Follow Up Question</button>
+        </form>
+    </div>
+</div>
+{% endif %}
 
 <div class="row">
     <div class="full column">
@@ -63,7 +91,9 @@
             <tbody>
     {% for doc in results['result']['provided_docs'] %}
                 <tr style="line-height: .5;">
+                    {% if results['result']['related_docs'] %}
                     <td>{{ doc['score'] }}</td>
+                    {% endif %}
                     <td>{{ originid_anchor(doc['source'])|safe }}</td>
                 </tr>
 
@@ -73,6 +103,7 @@
     </div>
 </div>
 
+{% if results['result']['related_docs'] %}
 <div class="row">
     <div class="full column">
         <h5>Other Related Docs</h5>
@@ -94,6 +125,7 @@
         </table>
     </div>
 </div>
+{% endif %}
 
 <div class="row">
     <div class="eight columns">
