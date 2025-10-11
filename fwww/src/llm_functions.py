@@ -13,10 +13,10 @@ initial_prompt = ""
 secondary_prompt =""" Use the following pieces of context to answer the users question. -----"""
 secondary_prompt =""" Be concise, precise and accurate. If the answer is not within the context provided 
 say so. Use the following pieces of context to answer the users question. ----- """
-secondary_prompt =""" Use the following pieces of context to answer the users question. ----- """
+secondary_prompt =""" Use the following pieces of context to answer the users question about a Cozy amatuer-build aircraft. ----- """
 
 revise_prompt="""You are the refinement model.
-Review the user's question, the draft response from GPT-4o-mini and the retrieved context.
+Review the user's question about a Cozy amatuer-build aircraft, the draft response from GPT-4o-mini and the retrieved context.
 Your task is to verify factual accuracy, add missing technical detail, and correct any mistakes.
 Cite or reference relevant context when useful.
 If the draft is already correct, restate it concisely.

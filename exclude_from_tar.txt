@@ -1,0 +1,7 @@
+__pycache__
+jobs/*
+dokucozy
+dokuN667CZ
+venv
+www
+server/certbot

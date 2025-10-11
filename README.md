@@ -13,6 +13,9 @@ Website 2024 revision.  Docker based.  Nginx, flask, docuwiki (2x) and supportin
   + replace fullchain.pem and privkey.pm symlinks with the actual files fullchain1.pem and privkey1.pm
   copied over from the current archive 
 
+# Make new tar file
+tar -czf ../project.tar.gz -X exclude_from_tar.txt ~/project/site_2024
+
 
 ### Todo
 
