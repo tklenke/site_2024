@@ -15,9 +15,10 @@ USE_GPT = False
 MAX_QUERY_LEN = 512
 MAX_INPUT_LEN = 75
 PROCESS_ID_LEN = 10
-MAX_DISTANCE = .45
+MAX_DISTANCE = .35
 MIN_DOCUMENTS = 5
-MAX_DOCUMENTS = 20
+MAX_DOCUMENTS = 60
+MAX_DRAFT_DOCUMENTS = 15
 
 [HOSTS]
 OLLAMA = http://ollama-rag:11434
@@ -33,4 +34,4 @@ INITIAL =
 SECONDARY = Use the following pieces of context to answer the users question:
 
 [OPTIONS]
-REVISE_AVAILABLE = True
+SHOW_REVISE = True

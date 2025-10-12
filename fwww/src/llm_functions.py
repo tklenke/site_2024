@@ -31,12 +31,26 @@ and previous content as context.
 
 #------------FUNCTIONS---------------
 # find the index of the most irrelevant response within the defined thresholds
-def get_min_relevant_response(results,fMaxDistance,nMinDocs):
-    r = nMinDocs
-    for i in range(nMinDocs,len(results['distances'][0])):
-        if (results['distances'][0][i] < fMaxDistance):
-            r = i
-    return r
+def get_num_draft_docs(results, fMaxDistance, nMinDocs, nMaxDraftDocs):
+    print(f"DEBUG: {fMaxDistance} {nMinDocs} {nMaxDraftDocs}")
+    distances = results['distances'][0]
+
+    # 2. Determine the upper bound for slicing. 
+    n_limit = min(len(distances), nMaxDraftDocs)
+    
+    try:
+        # Look for the last index where the condition is met.
+        for i in reversed(range(nMinDocs, n_limit)):
+            if distances[i] < fMaxDistance:
+                return i
+        
+        # If no result satisfies the condition, return the starting point
+        return nMinDocs
+        
+    except IndexError:
+        # Handle case where results['distances'][0] is empty or too short 
+        # (though n_limit and nMinDocs should prevent this if the inputs are valid)
+        return nMinDocs
 
 def get_prior_doc_ids_from_data(data):
     r = data['result']
@@ -132,10 +146,11 @@ class FileProcessorThread(threading.Thread):
         self.llm_revise_model = llm_revise
         return
     
-    def set_docs_params(self, max_distance=.45, min_documents=5, max_documents=20):
+    def set_docs_params(self, max_distance=.45, min_documents=5, max_documents=30, max_draft_documents=15):
         self.max_distance = max_distance
         self.min_documents = min_documents
         self.max_documents = max_documents
+        self.max_draft_documents = max_draft_documents
         return
     
     def set_prompts(self, prefix="", initial_prompt="", secondary_prompt=" Use the following pieces of context to answer the users question. ----- "):
@@ -158,7 +173,8 @@ class FileProcessorThread(threading.Thread):
         if data['type'] == "new":
             rQuery = self.get_query_results(data['query'])
             #prune related documents
-            nDocs = get_min_relevant_response(rQuery,self.max_distance,self.min_documents)
+            nDocs = get_num_draft_docs(rQuery,self.max_distance,self.min_documents,self.max_draft_documents)
+            print(f"DEBUG: {nDocs} nDocs")
             #construct the prompt
             relateddocs = '\n\n'.join(rQuery['documents'][0][:nDocs])
             prompt = f"{initial_prompt} {data['query']} {secondary_prompt} {relateddocs}"
