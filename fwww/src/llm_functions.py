@@ -32,7 +32,6 @@ and previous content as context.
 #------------FUNCTIONS---------------
 # find the index of the most irrelevant response within the defined thresholds
 def get_num_draft_docs(results, fMaxDistance, nMinDocs, nMaxDraftDocs):
-    print(f"DEBUG: {fMaxDistance} {nMinDocs} {nMaxDraftDocs}")
     distances = results['distances'][0]
 
     # 2. Determine the upper bound for slicing. 
@@ -93,6 +92,9 @@ def get_doc_list_from_result(rQuery, nDocsFrom=None, nDocsTo=None):
             # zip() iterates over the three sliced lists in parallel
             for doc_id, distance, metadata in zip(sliced_ids, sliced_distances, sliced_metadatas)
         ]
+        #note this is likely to introduce a difference in the number of docs shown to the user
+        #and what the min and max documents are. As one source document may result in several 
+        #chunks.  each chunk is a doc for purposes of counting max / min input to the model.
         r = dedupe_list_of_docs(r)
     else:
         ids = rQuery['ids']
@@ -174,7 +176,6 @@ class FileProcessorThread(threading.Thread):
             rQuery = self.get_query_results(data['query'])
             #prune related documents
             nDocs = get_num_draft_docs(rQuery,self.max_distance,self.min_documents,self.max_draft_documents)
-            print(f"DEBUG: {nDocs} nDocs")
             #construct the prompt
             relateddocs = '\n\n'.join(rQuery['documents'][0][:nDocs])
             prompt = f"{initial_prompt} {data['query']} {secondary_prompt} {relateddocs}"
