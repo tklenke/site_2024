@@ -200,12 +200,29 @@ class FileProcessorThread(threading.Thread):
     # Optional: specify what data to include (ids are always included)
     #include=["metadatas", "documents"] )
         if self.use_gpt:
+            #set default incase of error
+            r['model'] = modelName
+            r['prompt tokens'] = 0
+            r['completion tokens'] = 0
             #ask the model
-            completion = self.openaiclient.chat.completions.create(model=modelName,messages=[{"role": "user", "content": prompt}])
-            r['answer'] = completion.choices[0].message.content
-            r['model'] = completion.model
-            r['prompt tokens'] = completion.usage.prompt_tokens
-            r['completion tokens'] = completion.usage.completion_tokens
+            try:
+                completion = self.openaiclient.chat.completions.create(model=modelName,messages=[{"role": "user", "content": prompt}])
+                r['answer'] = completion.choices[0].message.content
+                r['model'] = completion.model
+                r['prompt tokens'] = completion.usage.prompt_tokens
+                r['completion tokens'] = completion.usage.completion_tokens
+            except openai.APIError as e:
+                #Handle API error here, e.g. retry or log
+                r['answer'] = f"OpenAI API returned an API Error: {e}"
+                pass
+            except openai.APIConnectionError as e:
+                #Handle connection error here
+                r['answer'] = f"Failed to connect to OpenAI API: {e}"
+                pass
+            except openai.RateLimitError as e:
+                #Handle rate limit error (we recommend using exponential backoff)
+                r['answer'] = f"OpenAI API request exceeded rate limit: {e}"
+                pass
         else:
             #Fake it
             r['answer'] = lorem_ipsum_string
