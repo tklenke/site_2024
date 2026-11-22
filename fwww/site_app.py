@@ -1,14 +1,13 @@
 # app.py or app/__init__.py
 from flask import Flask, render_template, request, url_for, flash, redirect, \
                   jsonify, session
-import time, os, json, queue, configparser
+import time, os, json, queue
 from src.llm_functions import FileProcessorThread
+from src.site_config import read_config
 from src.site_functions import sanitize, new_question, new_revision, \
             get_process_info, set_process_info_key_value, url_from_source, \
             get_all_jobs_info, update_process_status, render_markdown_file
 import markdown
-
-INI_PATH = './site.ini'
 
 app = Flask(__name__)
 
@@ -16,11 +15,7 @@ app = Flask(__name__)
 time.sleep(2)
 
 ### Load MiFrame Configuration
-if not os.path.exists(INI_PATH):
-    print(f"Can't find config file {INI_PATH}")
-    exit()
-cfg = configparser.ConfigParser()
-cfg.read(INI_PATH)
+cfg = read_config('.')
 app.debug = cfg.getboolean('LEVEL','DEBUG')
 app.secret_key = cfg.get('KEYS','SESSION')
 app.markdown_dir = cfg.get('PATHS','WWW_DiR')
