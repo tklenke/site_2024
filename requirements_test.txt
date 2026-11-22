@@ -1,0 +1,3 @@
+# Packages for running the tests; not installed in the image.
+-r requirements.txt
+pytest==9.2.0

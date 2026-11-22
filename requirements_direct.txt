@@ -1,0 +1,9 @@
+# Direct dependencies of the site. requirements.txt is the frozen result of resolving these.
+Flask
+gunicorn
+openai
+ollama
+Markdown
+Flask-Markdown
+python-dotenv
+chromadb-client==1.5.9
