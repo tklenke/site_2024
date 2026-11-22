@@ -31,3 +31,80 @@ def test_jobs_page_shows_an_unfinished_job(client, jobs_dir, strPath):
 def test_jobs_page_lists_the_question_of_an_unfinished_job(client, jobs_dir):
     write_job(jobs_dir, RUNNING)
     assert "what engine fits" in client.get("/cozyrag/jobs").get_data(as_text=True)
+
+
+def set_session(client, **dctValues):
+    with client.session_transaction() as session:
+        session.update(dctValues)
+
+
+# ---- revise
+def test_revise_accepts_post_only(client, jobs_dir):
+    write_job(jobs_dir, DONE)
+    set_session(client, process_id="done")
+    assert client.get("/cozyrag/revise").status_code == 405
+    assert len(list(jobs_dir.iterdir())) == 1
+
+
+def test_revise_creates_a_revise_job(client, jobs_dir):
+    write_job(jobs_dir, DONE)
+    set_session(client, process_id="done")
+    response = client.post("/cozyrag/revise")
+    assert response.location == "/cozyrag/answer"
+    with client.session_transaction() as session:
+        strId = session["process_id"]
+    assert strId != "done"
+    assert read_job(jobs_dir, strId)["status"] == "revise"
+
+
+# ---- requests without a session
+@pytest.mark.parametrize("dctSession", [{}, {"process_id": None}])
+@pytest.mark.parametrize("strMethod, strPath", [
+    ("post", "/cozyrag/revise"), ("get", "/cozyrag/followup"), ("post", "/cozyrag/followup"),
+    ("post", "/cozyrag/feedback"), ("get", "/cozyrag/answer")])
+def test_without_a_session_redirects_to_the_question_form(client, jobs_dir, strMethod, strPath,
+                                                          dctSession):
+    set_session(client, **dctSession)
+    response = client.open(strPath, method=strMethod,
+                           data={"question": "what engine", "satisfaction": "ok"}
+                           if strMethod == "post" else None)
+    assert response.status_code == 302
+    assert response.location == "/cozyrag/query"
+    assert list(jobs_dir.iterdir()) == []
+
+
+# ---- unknown jobs and columns
+@pytest.mark.parametrize("strPage", ["status", "processid"])
+def test_unknown_job_is_not_found(client, capsys, strPage):
+    assert client.get(f"/cozyrag/nosuchjob/{strPage}").status_code == 404
+    assert "nosuchjob.json" in capsys.readouterr().out
+
+
+def test_results_of_an_unfinished_job_are_not_found(client, jobs_dir):
+    write_job(jobs_dir, RUNNING)
+    assert client.get("/cozyrag/run/processid").status_code == 404
+
+
+def test_unknown_column_is_not_found(client, jobs_dir):
+    assert client.get("/cozyrag/jobs/nosuchcolumn").status_code == 404
+
+
+# ---- feedback
+@pytest.mark.parametrize("strRating", ["perfect", "ok", "not_good"])
+def test_feedback_is_recorded(client, jobs_dir, strRating):
+    write_job(jobs_dir, DONE)
+    set_session(client, process_id="done")
+    response = client.post("/cozyrag/feedback", data={"satisfaction": strRating})
+    assert response.location == "/cozyrag/query"
+    assert read_job(jobs_dir, "done")["satisfaction"] == strRating
+
+
+@pytest.mark.parametrize("dctForm", [{"satisfaction": "n/a"}, {"satisfaction": ""}, {}])
+def test_other_feedback_is_ignored(client, jobs_dir, dctForm):
+    write_job(jobs_dir, DONE)
+    set_session(client, process_id="done")
+    response = client.post("/cozyrag/feedback", data=dctForm)
+    assert response.location == "/cozyrag/query"
+    assert read_job(jobs_dir, "done") == DONE
+    with client.session_transaction() as session:
+        assert "_flashes" not in session

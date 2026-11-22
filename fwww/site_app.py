@@ -1,6 +1,6 @@
 # app.py or app/__init__.py
 from flask import Flask, render_template, request, url_for, flash, redirect, \
-                  jsonify, session
+                  jsonify, session, abort
 import time, os, json, queue
 from src.llm_functions import FileProcessorThread
 from src.site_config import read_config
@@ -9,6 +9,8 @@ from src.site_functions import sanitize, new_question, new_revision, \
             get_all_jobs_info, get_job_for_display, update_process_status, \
             render_markdown_file
 import markdown
+
+FEEDBACK_RATINGS = ('perfect', 'ok', 'not_good')
 
 app = Flask(__name__)
 
@@ -81,14 +83,18 @@ def cozyrag_query():
 
     return render_template('cozyrag_query.html')
 
-@app.route("/cozyrag/revise", methods=('GET', 'POST'))
+@app.route("/cozyrag/revise", methods=('POST',))
 def cozyrag_revise():
+    if not session.get('process_id'):
+        return redirect(url_for('cozyrag_query'))
     session['process_id'] = new_revision(session['process_id'], cfg.get('PATHS','JOBS_DiR'), cfg.getint('RAG','PROCESS_ID_LEN'))
     FPQueue.put(session['process_id'])
     return redirect(url_for('cozyrag_answer'))
 
 @app.route("/cozyrag/followup", methods=('GET', 'POST'))
 def cozyrag_followup():
+    if not session.get('process_id'):
+        return redirect(url_for('cozyrag_query'))
     if request.method == 'POST':
         query = sanitize(request.form.get('question'))
 
@@ -106,7 +112,9 @@ def cozyrag_followup():
 
 @app.route("/cozyrag/answer", methods=('GET', 'POST'))
 def cozyrag_answer():
-    if session['process_id'] is None:
+    if not session.get('process_id'):
+        if not session.get('query'):
+            return redirect(url_for('cozyrag_query'))
         processInput = {}
         processInput['query'] = session['query']
         processInput['email'] = session.get('email')
@@ -118,6 +126,8 @@ def cozyrag_answer():
 @app.route("/cozyrag/<string:process_id>/status")
 def cozyrag_status(process_id):
     data = get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id)
+    if not data:
+        abort(404)
     cur_time = time.time() - data['created'] 
 
     status = {'status': data['status']}
@@ -130,6 +140,8 @@ def cozyrag_status(process_id):
 @app.route("/cozyrag/feedback", methods=('GET', 'POST'))
 def cozyrag_feedback():
     satisfaction = request.form.get("satisfaction")
+    if not session.get('process_id') or satisfaction not in FEEDBACK_RATINGS:
+        return redirect(url_for('cozyrag_query'))
     flash(f"Thank you for the feedback that the last response was {satisfaction}")
     set_process_info_key_value('satisfaction',satisfaction,cfg.get('PATHS','JOBS_DiR'), session['process_id'])
     return redirect(url_for('cozyrag_query'))
@@ -137,6 +149,9 @@ def cozyrag_feedback():
 @app.route("/cozyrag/<string:process_id>/processid")
 def cozyrag_processid(process_id):
     data = get_job_for_display(get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id))
+    #an unknown or unfinished job has no results to show
+    if not data['result']:
+        abort(404)
     return render_template('cozyrag_results.html', results=data, show_revise=cfg.getboolean('OPTIONS','SHOW_REVISE'))
 
 @app.route("/cozyrag/jobs")
