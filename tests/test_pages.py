@@ -110,17 +110,63 @@ def test_other_feedback_is_ignored(client, jobs_dir, dctForm):
         assert "_flashes" not in session
 
 
+# ---- asking a question
+def test_question_creates_one_job(client, jobs_dir):
+    response = client.post("/cozyrag/query", data={"question": "what engine",
+                                                   "email": "a@example.com"})
+    assert response.location == "/cozyrag/answer"
+    with client.session_transaction() as session:
+        dctJob = read_job(jobs_dir, session["process_id"])
+    assert dctJob["status"] == "new"
+    assert dctJob["query"] == "what engine"
+    assert dctJob["email"] == "a@example.com"
+    assert len(list(jobs_dir.iterdir())) == 1
+
+
+def test_question_is_queued(client, site_app, jobs_dir):
+    while not site_app.FPQueue.empty():
+        site_app.FPQueue.get()
+    client.post("/cozyrag/query", data={"question": "what engine"})
+    with client.session_transaction() as session:
+        assert site_app.FPQueue.get_nowait() == session["process_id"]
+    assert site_app.FPQueue.empty()
+
+
+def test_address_is_remembered_for_the_next_question(client, jobs_dir):
+    client.post("/cozyrag/query", data={"question": "what engine", "email": "a@example.com"})
+    client.post("/cozyrag/query", data={"question": "what canopy"})
+    with client.session_transaction() as session:
+        assert read_job(jobs_dir, session["process_id"])["email"] == "a@example.com"
+
+
+def test_answer_page_polls_the_job(client, jobs_dir):
+    client.post("/cozyrag/query", data={"question": "what engine"})
+    with client.session_transaction() as session:
+        strId = session["process_id"]
+    assert f"/cozyrag/{strId}/status" in client.get("/cozyrag/answer").get_data(as_text=True)
+
+
+def test_reading_pages_creates_no_job(client, jobs_dir):
+    client.post("/cozyrag/query", data={"question": "what engine"})
+    for _ in range(3):
+        client.get("/cozyrag/answer")
+        client.get("/cozyrag/query")
+        response = client.get("/cozyrag/answer")
+    assert response.location == "/cozyrag/query"
+    assert len(list(jobs_dir.iterdir())) == 1
+
+
 # ---- user input
 HTML = "<b>seats</b> & <script>alert(1)</script>"
 
 
-def test_question_and_address_are_kept_as_plain_text(client):
+def test_question_and_address_are_kept_as_plain_text(client, jobs_dir):
     response = client.post("/cozyrag/query", data={"question": HTML, "email": "a@example.com"})
     assert response.location == "/cozyrag/answer"
     with client.session_transaction() as session:
-        assert type(session["query"]) is str
-        assert session["query"] == HTML
         assert type(session["email"]) is str
+        strId = session["process_id"]
+    assert read_job(jobs_dir, strId)["query"] == HTML
 
 
 def test_followup_question_is_recorded_as_typed(client, jobs_dir):

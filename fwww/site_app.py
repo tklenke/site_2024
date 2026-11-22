@@ -74,9 +74,13 @@ def cozyrag_query():
         elif email and len(email) > cfg.getint('RAG','MAX_INPUT_LEN'):
             flash("Email address malformed.")
         else:
-            session['query'] = query
             if email:
                 session['email'] = email
+            processInput = {}
+            processInput['query'] = query
+            processInput['email'] = session.get('email')
+            session['process_id'] = new_question(processInput, cfg.get('PATHS','JOBS_DiR'), cfg.getint('RAG','PROCESS_ID_LEN'))
+            FPQueue.put(session['process_id'])
             return redirect(url_for('cozyrag_answer'))
 
     return render_template('cozyrag_query.html')
@@ -111,13 +115,7 @@ def cozyrag_followup():
 @app.route("/cozyrag/answer", methods=('GET', 'POST'))
 def cozyrag_answer():
     if not session.get('process_id'):
-        if not session.get('query'):
-            return redirect(url_for('cozyrag_query'))
-        processInput = {}
-        processInput['query'] = session['query']
-        processInput['email'] = session.get('email')
-        session['process_id'] = new_question(processInput, cfg.get('PATHS','JOBS_DiR'), cfg.getint('RAG','PROCESS_ID_LEN'))
-        FPQueue.put(session['process_id'])
+        return redirect(url_for('cozyrag_query'))
     #return render_template('cozyrag_answer.html', user_input=processInput)
     return render_template('cozyrag_answer.html')
 
