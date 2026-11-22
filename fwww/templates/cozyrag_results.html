@@ -8,7 +8,9 @@
         {% else %}
         <h3>Results</h3>
         {% endif %}
-        {{ markdown_to_html(results['result']['answer'])|safe }}
+        <div style="overflow-x: auto;">
+        {{ answer_to_html(results['result']['answer'])|safe }}
+        </div>
         {% include "disclaimer_min.html" %}
     </div>
 </div>

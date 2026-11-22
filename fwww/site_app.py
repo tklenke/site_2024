@@ -2,6 +2,7 @@
 from flask import Flask, render_template, request, url_for, flash, redirect, \
                   jsonify, session, abort
 import time, os, json, queue
+from src.answer_html import get_answer_html
 from src.llm_functions import FileProcessorThread
 from src.error_reasons import get_error_text
 from src.site_config import read_config
@@ -195,6 +196,10 @@ def markdown_to_html_processor():
     def markdown_to_html(mdtxt):
         return Md.convert(mdtxt)
     return dict(markdown_to_html=markdown_to_html)
+
+@app.context_processor
+def answer_to_html_processor():
+    return dict(answer_to_html=get_answer_html)
 
 if __name__ == "__main__":
    app.run(host='0.0.0.0')

@@ -6,10 +6,10 @@ import glob
 import os
 import random
 
-import markdown
 from flask import Flask, abort, jsonify, render_template, request
 
 from answer_models import OUTPUT_DIRECTORY, QUESTIONS_CSV, read_json, read_questions, write_json
+from src.answer_html import get_answer_html
 
 RATINGS = ("perfect", "ok", "not_good")
 POSITIONS = "ABCDEFGH"
@@ -74,7 +74,7 @@ def create_app(strOutput, lstQuestions):
             strId = dctQuestion["question_id"]
             dctAnswers = read_answers(strOutput, strId)
             lstAnswers = [{"position": strPosition,
-                           "html": markdown.markdown(dctAnswers[strModel]),
+                           "html": get_answer_html(dctAnswers[strModel]),
                            "rating": dctRatings.get(strId, {}).get(strPosition, {})}
                           for strPosition, strModel in dctKey[strId].items()]
             strPrompt = read_json(os.path.join(strOutput, "prompts", f"{strId}.json"))["prompt"]
