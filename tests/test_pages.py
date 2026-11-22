@@ -73,6 +73,20 @@ def test_without_a_session_redirects_to_the_question_form(client, jobs_dir, strM
     assert list(jobs_dir.iterdir()) == []
 
 
+# ---- revising or following up a job that has no answer
+@pytest.mark.parametrize("lstJobs, strId", [([RUNNING], "run"), ([], "nosuchjob")])
+@pytest.mark.parametrize("strPath", ["/cozyrag/revise", "/cozyrag/followup"])
+def test_job_without_an_answer_redirects_to_the_question_form(client, jobs_dir, capsys, strPath,
+                                                              lstJobs, strId):
+    for dctJob in lstJobs:
+        write_job(jobs_dir, dctJob)
+    set_session(client, process_id=strId)
+    response = client.post(strPath, data={"question": "what engine"})
+    assert response.location == "/cozyrag/query"
+    assert len(list(jobs_dir.iterdir())) == len(lstJobs)
+    assert (f"{strId}.json" in capsys.readouterr().out) == (strId == "nosuchjob")
+
+
 # ---- unknown jobs and columns
 @pytest.mark.parametrize("strPage", ["status", "processid"])
 def test_unknown_job_is_not_found(client, capsys, strPage):

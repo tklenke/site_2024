@@ -85,9 +85,13 @@ def cozyrag_query():
 
     return render_template('cozyrag_query.html')
 
+# only a job with an answer can be revised or followed up
+def has_answer(process_id):
+    return bool(get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id).get('result'))
+
 @app.route("/cozyrag/revise", methods=('POST',))
 def cozyrag_revise():
-    if not session.get('process_id'):
+    if not session.get('process_id') or not has_answer(session['process_id']):
         return redirect(url_for('cozyrag_query'))
     session['process_id'] = new_revision(session['process_id'], cfg.get('PATHS','JOBS_DiR'), cfg.getint('RAG','PROCESS_ID_LEN'))
     FPQueue.put(session['process_id'])
@@ -104,6 +108,8 @@ def cozyrag_followup():
             flash('Question is required.')
         elif len(query) > cfg.getint('RAG','MAX_QUERY_LEN'):
             flash(f"Questions limited to {cfg.getint('RAG','MAX_QUERY_LEN')} characters. Please rephrase.")
+        elif not has_answer(session['process_id']):
+            return redirect(url_for('cozyrag_query'))
         else:
             session['process_id'] = new_revision(session['process_id'], cfg.get('PATHS','JOBS_DiR'), \
                                               cfg.getint('RAG','PROCESS_ID_LEN'),query)
