@@ -10,6 +10,7 @@ import pytest
 
 import src.llm_functions
 from src.llm_functions import FileProcessorThread
+from openai_server import start_openai_server
 
 COLLECTION = "nomic-embed-text"
 SITE_INI = """

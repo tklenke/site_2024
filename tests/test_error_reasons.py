@@ -2,9 +2,6 @@
 # ABOUTME: The real OpenAI client calls a local server that answers with each failure.
 
 import json
-import threading
-import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import openai
 import pytest
@@ -26,34 +23,13 @@ def let_tom_know(strPhrase):
 
 
 @pytest.fixture
-def openai_answers(processor):
+def openai_answers(processor, start_openai_server):
     """Makes the processor's OpenAI client call a server that gives the answer passed in."""
-    lstServers = []
-
     def start(intStatus, strCode=None, strType=None, fDelay=0):
-        class Handler(BaseHTTPRequestHandler):
-            def do_POST(self):
-                self.rfile.read(int(self.headers["Content-Length"]))
-                time.sleep(fDelay)
-                binBody = json.dumps({"error": {"message": DETAIL, "type": strType, "param": None,
-                                                "code": strCode}}).encode()
-                self.send_response(intStatus)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(binBody)))
-                self.end_headers()
-                self.wfile.write(binBody)
-
-            def log_message(self, *args):
-                pass
-
-        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        lstServers.append(server)
-        threading.Thread(target=server.serve_forever, args=(.01,), daemon=True).start()
-        use_openai_at(processor, f"http://127.0.0.1:{server.server_port}")
-    yield start
-    for server in lstServers:
-        server.shutdown()
-        server.server_close()
+        dctError = {"message": DETAIL, "type": strType, "param": None, "code": strCode}
+        server = start_openai_server(intStatus, {"error": dctError}, fDelay)
+        use_openai_at(processor, server.strUrl)
+    return start
 
 
 def use_openai_at(processor, strUrl):
