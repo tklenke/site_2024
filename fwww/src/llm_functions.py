@@ -16,15 +16,15 @@ say so. Use the following pieces of context to answer the users question. ----- 
 secondary_prompt =""" Use the following pieces of context to answer the users question about a Cozy amatuer-build aircraft. ----- """
 
 revise_prompt="""You are the refinement model.
-Review the user's question about a Cozy amatuer-build aircraft, the draft response from GPT-4o-mini and the retrieved context.
+Review the user's question about a Cozy amatuer-build aircraft, the draft response and the retrieved context.
 Your task is to verify factual accuracy, add missing technical detail, and correct any mistakes.
 Cite or reference relevant context when useful.
 If the draft is already correct, restate it concisely.
 """
 
 followup_prompt="""You are the refinement model.
-Review the user's follow up question, the draft response from GPT-4o-mini, the previous context provided 
-to GPT-4o-mini, and the additional content based on the followup question.
+Review the user's follow up question, the draft response, the previous context provided 
+for the draft response, and the additional content based on the followup question.
 Your task is to answer the follow up question to the draft response using the additional content
 and previous content as context.
 """
@@ -294,25 +294,3 @@ class FileProcessorThread(threading.Thread):
                 data['elapsed'] = data['complete_time'] - data['created']
                 update_process_info(data, filename=filename, directory=self.job_path)
                 processedJobs.append(filename)
-
-if __name__ == "__main__":
-    import time, os, json, queue, configparser
-    INI_PATH = './site.ini'
-
-    ### Load MiFrame Configuration
-    if not os.path.exists(INI_PATH):
-        print(f"Can't find config file {INI_PATH}")
-        exit()
-    cfg = configparser.ConfigParser()
-    cfg.read(INI_PATH)
-
-    FPQueue = queue.Queue()
-    FPThread = FileProcessorThread(cfg.get('PATHS','JOBS_DiR'), FPQueue, cfg.getboolean('RAG','USE_GPT'), \
-                                cfg.get('KEYS','OPENAI'), "localhost", "http://localhost:11434")
-    FPThread.set_models(cfg.get('MODELS','EMBED'), cfg.get('MODELS','LLM_DRAFT'), cfg.get('MODELS','LLM_REVISE'))
-    FPThread.set_prompts(cfg.get('PROMPTS','PREFIX'), cfg.get('PROMPTS','INITIAL'), cfg.get('PROMPTS','SECONDARY'))
-    FPThread.set_docs_params(cfg.getfloat('RAG','MAX_DISTANCE'), cfg.getint('RAG','MIN_DOCUMENTS'), cfg.getint('RAG','MAX_DOCUMENTS'))
-    print(f"asking question")
-    r = FPThread.process_question("how many seats does the cozy have")
-
-    print(r)

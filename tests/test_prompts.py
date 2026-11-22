@@ -1,6 +1,8 @@
 # ABOUTME: Tests the prompts sent to the models for new questions, revisions and follow-ups.
 # ABOUTME: Checks which document texts each prompt contains and where they are placed.
 
+import pytest
+
 from src.llm_functions import build_prompt, followup_prompt, initial_prompt, revise_prompt, \
     secondary_prompt
 
@@ -35,3 +37,9 @@ def test_followup_prompt():
                                  "ADDITIONAL_CONTENT: third chunk fourth chunk").split()
     assert "first chunk\n\nsecond chunk" in strPrompt
     assert "third chunk\n\nfourth chunk" in strPrompt
+
+
+@pytest.mark.parametrize("strPrompt", [initial_prompt, secondary_prompt, revise_prompt,
+                                       followup_prompt])
+def test_prompt_names_no_model(strPrompt):
+    assert "gpt" not in strPrompt.lower()
