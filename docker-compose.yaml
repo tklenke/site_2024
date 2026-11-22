@@ -9,16 +9,12 @@ services:
       - "443:443"
     volumes:
       - ./server/nginx_all_apps.conf:/etc/nginx/nginx.conf:ro
-      - ./data/dokucozy:/var/www/dokucozy
-      - ./data/dokuN657CZ:/var/www/dokuN657CZ
       - ./server/certbot/www/:/var/www/certbot/:ro
       - ./server/certbot/conf/live/m24tom.com/:/var/www/ssl/:ro
       - /home/admin/www/cgimages:/var/www/cgimages/:ro
       #note that symlinks will not work so need to make sure that 
       #after ssl certificate upgrade the actual .pem files are copied into this directory
     depends_on:
-        - php1
-        - php2
         - flask
     networks:
         - rag-network
@@ -33,7 +29,7 @@ services:
     #env_file:
     #  - ./.env_openai_key
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
     volumes:
       - ./fwww:/app/fwww
       - ./data/jobs:/app/jobs
@@ -46,30 +42,10 @@ services:
     #add restart directive at your option for server installs
     #restart: unless-stopped
 
-  php1:
-      image: php:7-fpm
-      container_name: php1
-      volumes:
-        - ./data/dokucozy:/var/www/dokucozy
-      networks:
-        - rag-network
-    #add restart directive at your option for server installs
-    #restart: unless-stopped
-
-  php2:
-      image: php:7-fpm
-      container_name: php2
-      volumes:
-        - ./data/dokuN657CZ:/var/www/dokuN657CZ
-      networks:
-        - rag-network
-    #add restart directive at your option for server installs
-    #restart: unless-stopped
-
   chroma-rag:
     image: chromadb/chroma:1.1.1
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./data/chroma:/data
     networks:
@@ -85,7 +61,7 @@ services:
     #volumes:
     #  - ollama:/root/.ollama
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     networks:
       - rag-network
     #add restart directive at your option for server installs
