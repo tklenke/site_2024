@@ -9,12 +9,13 @@ BASE_DIR="server/certbot/conf"
 LIVE_ROOT="$BASE_DIR/live"
 ARCHIVE_ROOT="$BASE_DIR/archive"
 DOMAIN="m24tom.com"
+WWW_DOMAIN="www.$DOMAIN"
 YAML_FILE="docker-certbot.yaml"
 
 # 1. Run Docker Compose Certbot Dry Run
 echo "--- Starting Certbot Dry Run ---"
 docker compose -f "$YAML_FILE" run --rm certbot certonly --webroot \
-    --webroot-path /var/www/certbot/ --dry-run -d "$DOMAIN"
+    --webroot-path /var/www/certbot/ --dry-run -d "$DOMAIN" -d "$WWW_DOMAIN"
 
 read -p "Did the dry run succeed? (y/n): " confirm
 if [[ $confirm != "y" ]]; then
@@ -25,7 +26,7 @@ fi
 # 2. Run Actual Certbot Generation
 echo "--- Running actual Certbot generation ---"
 docker compose -f "$YAML_FILE" run --rm certbot certonly --webroot \
-    --webroot-path /var/www/certbot/ -d "$DOMAIN"
+    --webroot-path /var/www/certbot/ -d "$DOMAIN" -d "$WWW_DOMAIN"
 
 # 3. Handle Directory Logic (Finding the highest -000n in archive/)
 echo "Searching for the highest versioned directory (m24tom.com-########)..."
@@ -54,6 +55,31 @@ for name in fullchain privkey; do
     exit 1
   fi
 done
+
+# Check the certificate before replacing anything
+CANDIDATE="$TARGET_ARCHIVE_DIR/fullchain$NUMBER.pem"
+
+NAMES=$(openssl x509 -in "$CANDIDATE" -noout -ext subjectAltName)
+for name in "$DOMAIN" "$WWW_DOMAIN"; do
+  if ! echo "$NAMES" | tr -d ' ' | tr ',' '\n' | grep -Fqx "DNS:$name"; then
+    echo "Error: $CANDIDATE does not name $name"
+    exit 1
+  fi
+done
+
+# The time a certificate starts, in seconds. The steps are joined so that a failed one
+# fails the function: set -e does not reach into a command substitution.
+start_seconds() {
+  local start
+  start=$(openssl x509 -in "$1" -noout -startdate) && date -d "${start#notBefore=}" +%s
+}
+
+CANDIDATE_START=$(start_seconds "$CANDIDATE")
+CURRENT_START=$(start_seconds "$LIVE_ROOT/$DOMAIN/fullchain.pem")
+if [ "$CANDIDATE_START" -lt "$CURRENT_START" ]; then
+  echo "Error: $CANDIDATE is older than the certificate in place"
+  exit 1
+fi
 
 # 4. Backup current live directory
 echo "Backing up current $LIVE_ROOT/$DOMAIN to $LIVE_ROOT/$DOMAIN.old..."
@@ -88,7 +114,7 @@ docker compose restart || echo "Error: restart failed. Answer n below to roll ba
 
 # 7. Verification
 echo "------------------------------------------------"
-echo "ACTION REQUIRED: Check https://$DOMAIN in your browser."
+echo "ACTION REQUIRED: Check https://$DOMAIN and https://$WWW_DOMAIN in your browser."
 read -p "Is the website responding correctly with SSL? (y/n): " ssl_ok
 
 # 8. Cleanup
