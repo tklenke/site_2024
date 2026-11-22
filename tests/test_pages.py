@@ -8,6 +8,7 @@ import pytest
 DONE = {"process_id": "done", "status": "complete", "created": 1.0, "elapsed": 2.5, "type": "new",
         "query": "how many seats",
         "result": {"answer": "Four.", "provided_docs": [], "related_docs": []}}
+UNREADABLE = [b"not json", b"\xff", b"[1]"]
 RUNNING = {"process_id": "run", "status": "start", "created": 2.0, "query": "what engine fits"}
 COLUMNS = ["email", "tokens_in", "tokens_out", "elapsed", "num_docs", "avg_score",
            "satisfaction", "query", "answer"]
@@ -33,10 +34,11 @@ def test_jobs_page_lists_the_question_of_an_unfinished_job(client, jobs_dir):
     assert "what engine fits" in client.get("/cozyrag/jobs").get_data(as_text=True)
 
 
+@pytest.mark.parametrize("binContent", UNREADABLE)
 @pytest.mark.parametrize("strPath", ["/cozyrag/jobs", "/cozyrag/jobs/query"])
-def test_jobs_page_leaves_out_an_unreadable_job(client, jobs_dir, capsys, strPath):
+def test_jobs_page_leaves_out_an_unreadable_job(client, jobs_dir, capsys, strPath, binContent):
     write_job(jobs_dir, DONE)
-    (jobs_dir / "bad.json").write_text("not json")
+    (jobs_dir / "bad.json").write_bytes(binContent)
     response = client.get(strPath)
     assert response.status_code == 200
     assert "how many seats" in response.get_data(as_text=True)
@@ -104,6 +106,14 @@ def test_unknown_job_is_not_found(client, capsys, strPage):
     assert "nosuchjob.json" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("binContent", UNREADABLE)
+@pytest.mark.parametrize("strPage", ["status", "processid"])
+def test_unreadable_job_is_not_found(client, jobs_dir, capsys, strPage, binContent):
+    (jobs_dir / "bad.json").write_bytes(binContent)
+    assert client.get(f"/cozyrag/bad/{strPage}").status_code == 404
+    assert "Error decoding JSON file" in capsys.readouterr().out
+
+
 def test_results_of_an_unfinished_job_are_not_found(client, jobs_dir):
     write_job(jobs_dir, RUNNING)
     assert client.get("/cozyrag/run/processid").status_code == 404
@@ -144,15 +154,15 @@ def test_other_feedback_is_ignored(client, jobs_dir, dctForm):
         assert "_flashes" not in session
 
 
-@pytest.mark.parametrize("strContent", [None, "not json"])
-def test_feedback_on_a_job_that_cannot_be_read_writes_nothing(client, jobs_dir, capsys, strContent):
+@pytest.mark.parametrize("binContent", [None] + UNREADABLE)
+def test_feedback_on_a_job_that_cannot_be_read_writes_nothing(client, jobs_dir, capsys, binContent):
     pathJob = jobs_dir / "bad.json"
-    if strContent is not None:
-        pathJob.write_text(strContent)
+    if binContent is not None:
+        pathJob.write_bytes(binContent)
     set_session(client, process_id="bad")
     response = client.post("/cozyrag/feedback", data={"satisfaction": "ok"})
     assert response.location == "/cozyrag/query"
-    assert (pathJob.read_text() if pathJob.exists() else None) == strContent
+    assert (pathJob.read_bytes() if pathJob.exists() else None) == binContent
     with client.session_transaction() as session:
         assert "_flashes" not in session
     assert "JSON file" in capsys.readouterr().out

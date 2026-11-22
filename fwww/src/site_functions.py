@@ -127,8 +127,11 @@ def get_process_info(directory, processId=None, filename=None ):
     try:
         with open_with_lock(job_path, 'r') as f:
             try:
-                return json.load(f)
-            except json.JSONDecodeError as e:
+                info = json.load(f)
+                if not isinstance(info, dict):
+                    raise ValueError("The content is not a JSON object")
+                return info
+            except ValueError as e:
                 print(f"Error decoding JSON file: {filename} {e}")
                 return data
     except IOError as e:
