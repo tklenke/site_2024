@@ -61,6 +61,29 @@ def get_prior_doc_ids_from_data(data):
     #list(set()) dedupes the list of ids
     return list(set(ids))
 
+def build_prompt(data, docs, additional_docs=()):
+    """
+    Builds the prompt for a job.
+
+    :param data: The job data, with the 'type' and 'query' and, for a revision or a follow-up, the prior 'result'.
+    :param docs: The document texts for a new question, or those of the prior answer.
+    :param additional_docs: The document texts retrieved for a follow-up question.
+    :return: The prompt string.
+    """
+    doctext = '\n\n'.join(docs)
+    if data['type'] == "new":
+        prompt = f"{initial_prompt} {data['query']} {secondary_prompt} {doctext}"
+    elif data['type'] == "followup":
+        additionaldocs = '\n\n'.join(additional_docs)
+        prompt = f"""{followup_prompt} USER QUESTION: {data['query']}
+                        DRAFT RESPONSE: {data['result']['answer']} PREVIOUS CONTENT: {doctext}
+                        ADDITIONAL_CONTENT: {additionaldocs}"""
+    else: #revise
+        prompt = f"""{revise_prompt} USER QUESTION {data['query']} 
+                            DRAFT RESPONSE: {data['result']['answer']} 
+                            RETRIEVED CONTENT: {doctext}"""
+    return prompt
+
 def get_doc_list_from_result(rQuery, nDocsFrom=None, nDocsTo=None):
     """
     Transforms parallel query results (ids, distances, metadata) into a 
@@ -177,25 +200,18 @@ class FileProcessorThread(threading.Thread):
             #prune related documents
             nDocs = get_num_draft_docs(rQuery,self.max_distance,self.min_documents,self.max_draft_documents)
             #construct the prompt
-            relateddocs = '\n\n'.join(rQuery['documents'][0][:nDocs])
-            prompt = f"{initial_prompt} {data['query']} {secondary_prompt} {relateddocs}"
+            prompt = build_prompt(data, rQuery['documents'][0][:nDocs])
             modelName = self.llm_draft_model
         else:
             #list(set()) does a dedupe of the ids
             ids_for_fetch = get_prior_doc_ids_from_data(data)
             rPriorDocs = self.collection.get(ids=ids_for_fetch)
             modelName = self.llm_revise_model
-            priordocs = '\n\n'.join(rPriorDocs['documents'][0])
+            additionalDocs = ()
             if data['type'] == "followup":
                 rQuery = self.get_query_results(data['query'])
-                additionaldocs = '\n\n'.join(rQuery['documents'][0])
-                prompt = f"""{followup_prompt} USER QUESTION: {data['query']}
-                        DRAFT RESPONSE: {data['result']['answer']} PREVIOUS CONTENT: {priordocs}
-                        ADDITIONAL_CONTENT: {additionaldocs}"""
-            else: #revise
-               prompt = f"""{revise_prompt} USER QUESTION {data['query']} 
-                            DRAFT RESPONSE: {data['result']['answer']} 
-                            RETRIEVED CONTENT: {priordocs}"""
+                additionalDocs = rQuery['documents'][0]
+            prompt = build_prompt(data, rPriorDocs['documents'][0], additionalDocs)
  
     # Optional: specify what data to include (ids are always included)
     #include=["metadatas", "documents"] )
