@@ -30,7 +30,7 @@ and previous content as context.
 """
 
 #------------FUNCTIONS---------------
-# find the index of the most irrelevant response within the defined thresholds
+# find the number of responses within the defined thresholds
 def get_num_draft_docs(results, fMaxDistance, nMinDocs, nMaxDraftDocs):
     distances = results['distances'][0]
 
@@ -41,7 +41,7 @@ def get_num_draft_docs(results, fMaxDistance, nMinDocs, nMaxDraftDocs):
         # Look for the last index where the condition is met.
         for i in reversed(range(nMinDocs, n_limit)):
             if distances[i] < fMaxDistance:
-                return i
+                return i + 1
         
         # If no result satisfies the condition, return the starting point
         return nMinDocs
