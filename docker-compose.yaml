@@ -18,8 +18,7 @@ services:
         - flask
     networks:
         - rag-network
-    #add restart directive at your option for server installs
-    #restart: unless-stopped
+    restart: unless-stopped
 
   flask:
     build:
@@ -37,8 +36,7 @@ services:
       - ollama-rag
     networks:
       - rag-network
-    #add restart directive at your option for server installs
-    #restart: unless-stopped
+    restart: unless-stopped
 
   chroma-rag:
     image: chromadb/chroma:1.5.9
@@ -48,8 +46,7 @@ services:
       - ./data/chroma:/data
     networks:
       - rag-network
-    #add restart directive at your option for server installs
-    #restart: unless-stopped
+    restart: unless-stopped
 
 # docker run --gpus=all -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
   ollama-rag:
@@ -62,8 +59,7 @@ services:
       - "127.0.0.1:11434:11434"
     networks:
       - rag-network
-    #add restart directive at your option for server installs
-    #restart: unless-stopped
+    restart: unless-stopped
 
 networks:
   rag-network:
