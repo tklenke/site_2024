@@ -1,6 +1,6 @@
 import chromadb, ollama, openai
 import threading, os, time, json, queue
-from src.site_functions import get_process_info, update_process_status, update_process_info, dedupe_list_of_docs
+from src.site_functions import get_process_info, update_process_status, update_process_info
 
 #--------- CONSTANTs -------------
 
@@ -115,10 +115,6 @@ def get_doc_list_from_result(rQuery, nDocsFrom=None, nDocsTo=None):
             # zip() iterates over the three sliced lists in parallel
             for doc_id, distance, metadata in zip(sliced_ids, sliced_distances, sliced_metadatas)
         ]
-        #note this is likely to introduce a difference in the number of docs shown to the user
-        #and what the min and max documents are. As one source document may result in several 
-        #chunks.  each chunk is a doc for purposes of counting max / min input to the model.
-        r = dedupe_list_of_docs(r)
     else:
         ids = rQuery['ids']
         sliced_ids = ids[nDocsFrom:nDocsTo]

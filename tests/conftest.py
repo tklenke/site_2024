@@ -70,7 +70,10 @@ def processor(collection):
     processor = FileProcessorThread.__new__(FileProcessorThread)
     processor.collection = collection
     processor.use_gpt = True
+    processor.llm_draft_model = "draft-model"
     processor.llm_revise_model = "revise-model"
+    processor.set_docs_params(max_distance=.35, min_documents=5, max_documents=60,
+                              max_draft_documents=15)
     processor.lstPrompts = []
 
     def create(model, messages):

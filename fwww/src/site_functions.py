@@ -10,12 +10,13 @@ def dedupe_list_of_docs(data):
         key3 = entry["source"]
         
         # Check if key3 is already in the deduped dictionary
-        if key3 not in deduped or entry["score"] > deduped[key3]["score"]:
+        # the entries of a revise or follow-up may have no score
+        if key3 not in deduped or entry.get("score", "") > deduped[key3].get("score", ""):
             # Update deduped dictionary with entry having the highest key2 value for key3
-            deduped[key3] = {"id": entry["id"], "score": entry["score"]}
+            deduped[key3] = entry
     
     # Convert the deduped dictionary back to a list of dicts
-    return [{"id": v["id"], "score": v["score"], "source": k} for k, v in deduped.items()]
+    return list(deduped.values())
 
 def render_markdown_file(mdfilepath):
     # This could be cached for a more high traffic site
@@ -139,10 +140,20 @@ def shorten_email(email):
         return ''
     return email[:5] + '...'
 
+# a copy of the result with one entry for each source document
+#note this is likely to introduce a difference in the number of docs shown to the user
+#and what the min and max documents are. As one source document may result in several 
+#chunks.  each chunk is a doc for purposes of counting max / min input to the model.
+def get_result_for_display(result):
+    deduped = {key: dedupe_list_of_docs(result[key]) for key in ('provided_docs', 'related_docs')
+               if key in result}
+    return {**result, **deduped}
+
 # a copy of the job record that is safe to show on a web page
 # an unfinished job has no result or elapsed time
 def get_job_for_display(data):
-    return {'result': {}, 'elapsed': 0, **data, 'email': shorten_email(data.get('email'))}
+    return {'elapsed': 0, **data, 'result': get_result_for_display(data.get('result', {})),
+            'email': shorten_email(data.get('email'))}
 
 def get_all_jobs_info(directory):
     aJobInfo = []
