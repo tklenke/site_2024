@@ -33,6 +33,16 @@ def test_jobs_page_lists_the_question_of_an_unfinished_job(client, jobs_dir):
     assert "what engine fits" in client.get("/cozyrag/jobs").get_data(as_text=True)
 
 
+@pytest.mark.parametrize("strPath", ["/cozyrag/jobs", "/cozyrag/jobs/query"])
+def test_jobs_page_leaves_out_an_unreadable_job(client, jobs_dir, capsys, strPath):
+    write_job(jobs_dir, DONE)
+    (jobs_dir / "bad.json").write_text("not json")
+    response = client.get(strPath)
+    assert response.status_code == 200
+    assert "how many seats" in response.get_data(as_text=True)
+    assert "Error decoding JSON file: bad.json" in capsys.readouterr().out
+
+
 def set_session(client, **dctValues):
     with client.session_transaction() as session:
         session.update(dctValues)

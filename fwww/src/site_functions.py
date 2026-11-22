@@ -158,7 +158,10 @@ def get_job_for_display(data):
 def get_all_jobs_info(directory):
     aJobInfo = []
     for filename in os.listdir(directory):
-        aJobInfo.append(get_job_for_display(get_process_info(directory,filename=filename)))
+        data = get_process_info(directory,filename=filename)
+        #an unreadable job has nothing to show
+        if data:
+            aJobInfo.append(get_job_for_display(data))
     return sorted(aJobInfo, key=lambda x: x['created'], reverse=True)   
 
 #####
