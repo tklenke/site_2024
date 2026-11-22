@@ -139,10 +139,19 @@ def get_process_info(directory, processId=None, filename=None ):
          print(f"Error processing JSON file: {filename} {e}")
          return data
     
+def shorten_email(email):
+    if not email:
+        return ''
+    return email[:5] + '...'
+
+# a copy of the job record that is safe to show on a web page
+def get_job_for_display(data):
+    return {**data, 'email': shorten_email(data.get('email'))}
+
 def get_all_jobs_info(directory):
     aJobInfo = []
     for filename in os.listdir(directory):
-        aJobInfo.append(get_process_info(directory,filename=filename))
+        aJobInfo.append(get_job_for_display(get_process_info(directory,filename=filename)))
     return sorted(aJobInfo, key=lambda x: x['created'], reverse=True)   
 
 #####

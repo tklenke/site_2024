@@ -6,7 +6,8 @@ from src.llm_functions import FileProcessorThread
 from src.site_config import read_config
 from src.site_functions import sanitize, new_question, new_revision, \
             get_process_info, set_process_info_key_value, url_from_source, \
-            get_all_jobs_info, update_process_status, render_markdown_file
+            get_all_jobs_info, get_job_for_display, update_process_status, \
+            render_markdown_file
 import markdown
 
 app = Flask(__name__)
@@ -119,11 +120,12 @@ def cozyrag_status(process_id):
     data = get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id)
     cur_time = time.time() - data['created'] 
 
+    status = {'status': data['status']}
     if data['status'] == 'complete':
-        data['result_html'] = render_template('cozyrag_results.html', results=data, show_revise=cfg.getboolean('OPTIONS','SHOW_REVISE'))
+        status['result_html'] = render_template('cozyrag_results.html', results=get_job_for_display(data), show_revise=cfg.getboolean('OPTIONS','SHOW_REVISE'))
     else:
-        data['status_text'] = "Status: " + data['status'] + "." * (int(cur_time) % 10)
-    return jsonify(data)
+        status['status_text'] = "Status: " + data['status'] + "." * (int(cur_time) % 10)
+    return jsonify(status)
 
 @app.route("/cozyrag/feedback", methods=('GET', 'POST'))
 def cozyrag_feedback():
@@ -134,7 +136,7 @@ def cozyrag_feedback():
 
 @app.route("/cozyrag/<string:process_id>/processid")
 def cozyrag_processid(process_id):
-    data = get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id)
+    data = get_job_for_display(get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id))
     return render_template('cozyrag_results.html', results=data, show_revise=cfg.getboolean('OPTIONS','SHOW_REVISE'))
 
 @app.route("/cozyrag/jobs")
@@ -170,15 +172,6 @@ def markdown_to_html_processor():
     def markdown_to_html(mdtxt):
         return Md.convert(mdtxt)
     return dict(markdown_to_html=markdown_to_html)
-
-# Define a custom truncate filter
-@app.context_processor
-def safe_truncate_processor():
-    def safe_truncate(text, length=100):
-        if text is None:
-            return ''  # Return an empty string if text is None
-        return text[:length] + '...' if len(text) > length else text
-    return dict(safe_truncate=safe_truncate)
 
 if __name__ == "__main__":
    app.run(host='0.0.0.0')

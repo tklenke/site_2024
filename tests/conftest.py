@@ -1,14 +1,59 @@
-# ABOUTME: Fixtures shared by the tests of the job processing code.
-# ABOUTME: Gives a job processor on the real collection that records the prompts it sends.
+# ABOUTME: Fixtures shared by the tests of the job processing code and of the site's pages.
+# ABOUTME: Gives a processor on the real collection, and the Flask app with real job files.
 
+import os
 from types import SimpleNamespace
 
 import chromadb
 import pytest
 
+import src.llm_functions
 from src.llm_functions import FileProcessorThread
 
 COLLECTION = "nomic-embed-text"
+SITE_INI = """
+[LEVEL]
+DEBUG = False
+[PATHS]
+JOBS_DIR = unset
+WWW_DIR = unset
+[RAG]
+USE_GPT = False
+MAX_QUERY_LEN = 1024
+MAX_INPUT_LEN = 75
+PROCESS_ID_LEN = 10
+MAX_DISTANCE = .35
+MIN_DOCUMENTS = 5
+MAX_DOCUMENTS = 60
+MAX_DRAFT_DOCUMENTS = 15
+[HOSTS]
+OLLAMA = unused
+CHROMA = unused
+[MODELS]
+EMBED = unused
+LLM_DRAFT = unused
+LLM_REVISE = unused
+[PROMPTS]
+PREFIX = search_query:
+[OPTIONS]
+SHOW_REVISE = True
+"""
+
+
+class NoJobThread:
+    """Stands in for the job thread, which connects to the services when it is created."""
+
+    def __init__(self, *args):
+        pass
+
+    def set_models(self, *args):
+        pass
+
+    def set_embed_prefix(self, *args):
+        pass
+
+    def set_docs_params(self, *args):
+        pass
 
 
 @pytest.fixture(scope="module")
@@ -37,3 +82,34 @@ def processor(collection):
     processor.openaiclient = SimpleNamespace(
         chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
     return processor
+
+
+@pytest.fixture(scope="session")
+def site_app(tmp_path_factory):
+    """The site's app module. Its job thread is left out, so no service is needed."""
+    pathRun = tmp_path_factory.mktemp("run")
+    (pathRun / "site.ini").write_text(SITE_INI)
+    (pathRun / "site_local.ini").write_text("[KEYS]\nSESSION = session-key\nOPENAI = unused\n")
+    strCwd = os.getcwd()
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(src.llm_functions, "FileProcessorThread", NoJobThread)
+        os.chdir(pathRun)
+        try:
+            import site_app
+        finally:
+            os.chdir(strCwd)
+    return site_app
+
+
+@pytest.fixture
+def jobs_dir(site_app, tmp_path):
+    """An empty job directory that the app uses."""
+    pathJobs = tmp_path / "jobs"
+    pathJobs.mkdir()
+    site_app.cfg.set("PATHS", "JOBS_DIR", str(pathJobs))
+    return pathJobs
+
+
+@pytest.fixture
+def client(site_app, jobs_dir):
+    return site_app.app.test_client()

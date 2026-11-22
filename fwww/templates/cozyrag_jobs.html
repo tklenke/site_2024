@@ -33,7 +33,7 @@
     {% for job in jobs %}
       {% if not column %}
       <tr style="line-height: .80;">
-        <td>{{ safe_truncate(job['email'],5) }}</td>
+        <td>{{ job['email'] }}</td>
         <td>{{ job['result']['prompt tokens'] }}</td>
         <td>{{ job['result']['completion tokens'] }}</td>
         <td>{{ job['elapsed'] | round(2) }}</td>
@@ -48,7 +48,7 @@
       {% else %}
       <tr>
         <td>
-          {% if column == 'email' %}{{ safe_truncate(job['email'],5) }}
+          {% if column == 'email' %}{{ job['email'] }}
           {% elif column == 'tokens_in' %}{{ job['result']['prompt tokens'] }}
           {% elif column == 'tokens_out' %}{{ job['result']['completion tokens'] }}
           {% elif column == 'elapsed' %}{{ job['elapsed'] | round(2) }}
