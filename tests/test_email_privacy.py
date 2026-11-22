@@ -2,6 +2,8 @@
 # ABOUTME: Uses a real job file holding a known address and reads whole responses.
 
 import json
+import re
+import time
 
 import pytest
 
@@ -47,12 +49,15 @@ def test_status_of_complete_job_has_only_what_the_page_reads(client, job):
     assert set(client.get("/cozyrag/abc/status").get_json()) == {"status", "result_html"}
 
 
-def test_status_of_running_job_has_only_what_the_page_reads(client, jobs_dir):
-    dctJob = {"process_id": "run", "status": "start", "created": 1.0, "query": "q", "email": EMAIL}
+# the status text ends in a dot for each second since a multiple of ten: 100 seconds give none
+@pytest.mark.parametrize("fAge", [100.2, 103.2])
+def test_status_of_running_job_has_only_what_the_page_reads(client, jobs_dir, fAge):
+    dctJob = {"process_id": "run", "status": "start", "created": time.time() - fAge, "query": "q",
+              "email": EMAIL}
     (jobs_dir / "run.json").write_text(json.dumps(dctJob))
     dctStatus = client.get("/cozyrag/run/status").get_json()
     assert set(dctStatus) == {"status", "status_text"}
-    assert dctStatus["status_text"].startswith("Status: start.")
+    assert re.fullmatch(r"Status: start\.{0,9}", dctStatus["status_text"])
 
 
 def test_jobs_page_lists_a_job_without_an_address(client, jobs_dir):
