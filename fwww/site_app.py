@@ -135,6 +135,8 @@ def cozyrag_status(process_id):
     status = {'status': data['status']}
     if data['status'] == 'complete':
         status['result_html'] = render_template('cozyrag_results.html', results=get_job_for_display(data), show_revise=cfg.getboolean('OPTIONS','SHOW_REVISE'))
+    elif data['status'] == 'error':
+        status['status_text'] = "Your question could not be answered. Please try again."
     else:
         status['status_text'] = "Status: " + data['status'] + "." * (int(cur_time) % 10)
     return jsonify(status)

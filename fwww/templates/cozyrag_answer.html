@@ -20,6 +20,8 @@
                 .then(data => {
                   if (data.status === 'complete') {
                     document.getElementById('result').innerHTML = data.result_html;
+                  } else if (data.status === 'error') {
+                    document.getElementById('result').textContent = data.status_text;
                   } else {
                     document.getElementById('status').textContent = data.status_text;
                     setTimeout(fetchData, 1000); // Wait 10 seconds and fetch again
