@@ -108,3 +108,44 @@ def test_other_feedback_is_ignored(client, jobs_dir, dctForm):
     assert read_job(jobs_dir, "done") == DONE
     with client.session_transaction() as session:
         assert "_flashes" not in session
+
+
+# ---- user input
+HTML = "<b>seats</b> & <script>alert(1)</script>"
+
+
+def test_question_and_address_are_kept_as_plain_text(client):
+    response = client.post("/cozyrag/query", data={"question": HTML, "email": "a@example.com"})
+    assert response.location == "/cozyrag/answer"
+    with client.session_transaction() as session:
+        assert type(session["query"]) is str
+        assert session["query"] == HTML
+        assert type(session["email"]) is str
+
+
+def test_followup_question_is_recorded_as_typed(client, jobs_dir):
+    write_job(jobs_dir, DONE)
+    set_session(client, process_id="done")
+    client.post("/cozyrag/followup", data={"question": HTML})
+    with client.session_transaction() as session:
+        strId = session["process_id"]
+    assert read_job(jobs_dir, strId)["query"] == HTML
+
+
+@pytest.mark.parametrize("strPath", ["/cozyrag/done/processid", "/cozyrag/jobs",
+                                     "/cozyrag/jobs/query"])
+def test_question_is_escaped_on_the_page(client, jobs_dir, strPath):
+    write_job(jobs_dir, dict(DONE, query=HTML))
+    strPage = client.get(strPath).get_data(as_text=True)
+    assert "<script>alert" not in strPage
+    assert "&lt;script&gt;alert" in strPage
+
+
+@pytest.mark.parametrize("strPath", ["/cozyrag/query", "/cozyrag/followup"])
+@pytest.mark.parametrize("dctForm", [{}, {"question": ""}])
+def test_question_is_required(client, jobs_dir, strPath, dctForm):
+    set_session(client, process_id="done")
+    response = client.post(strPath, data=dctForm)
+    assert response.status_code == 200
+    assert "Question is required." in response.get_data(as_text=True)
+    assert list(jobs_dir.iterdir()) == []

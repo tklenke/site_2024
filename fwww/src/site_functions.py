@@ -1,12 +1,7 @@
-from markupsafe import Markup, escape
 import threading, os, string, random, time, json, re
 from src.open_with_lock import open_with_lock
 from flask import Flask, render_template, request, url_for, flash, redirect, \
                   jsonify, session
-
-def sanitize(txt):
-    # my santize functions for unknown text
-    return Markup(txt)
 
 def dedupe_list_of_docs(data):
     deduped = {}

@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, url_for, flash, redirect, \
 import time, os, json, queue
 from src.llm_functions import FileProcessorThread
 from src.site_config import read_config
-from src.site_functions import sanitize, new_question, new_revision, \
+from src.site_functions import new_question, new_revision, \
             get_process_info, set_process_info_key_value, url_from_source, \
             get_all_jobs_info, get_job_for_display, update_process_status, \
             render_markdown_file
@@ -64,10 +64,8 @@ def cozyrag_start():
 def cozyrag_query():
     session['process_id'] = None
     if request.method == 'POST':
-        query = sanitize(request.form.get('question'))
+        query = request.form.get('question')
         email = request.form.get('email')
-        if not session.get('email') and email:
-            email = sanitize(email)
 
         if not query:
             flash('Question is required.')
@@ -96,7 +94,7 @@ def cozyrag_followup():
     if not session.get('process_id'):
         return redirect(url_for('cozyrag_query'))
     if request.method == 'POST':
-        query = sanitize(request.form.get('question'))
+        query = request.form.get('question')
 
         if not query:
             flash('Question is required.')
