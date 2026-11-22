@@ -145,8 +145,9 @@ def shorten_email(email):
     return email[:5] + '...'
 
 # a copy of the job record that is safe to show on a web page
+# an unfinished job has no result or elapsed time
 def get_job_for_display(data):
-    return {**data, 'email': shorten_email(data.get('email'))}
+    return {'result': {}, 'elapsed': 0, **data, 'email': shorten_email(data.get('email'))}
 
 def get_all_jobs_info(directory):
     aJobInfo = []
