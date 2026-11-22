@@ -58,8 +58,22 @@ def get_prior_doc_ids_from_data(data):
     # Use a nested list comprehension to iterate over all documents 
     # in the available lists and extract their 'id'.
     ids = [d['id'] for doc_list in doc_lists for d in doc_list]
-    #list(set()) dedupes the list of ids
-    return list(set(ids))
+    #dict.fromkeys() dedupes the list of ids and keeps their order
+    return list(dict.fromkeys(ids))
+
+def get_docs_in_order(collection, ids):
+    """
+    Gets documents by their ids. The collection returns them in an order of its own.
+
+    :param collection: The document collection.
+    :param ids: The ids, without duplicates.
+    :return: A dictionary containing 'ids', 'documents' and 'metadatas', each in the order of
+             the given ids. Ids that are not in the collection are left out.
+    """
+    rDocs = collection.get(ids=ids)
+    positions = {doc_id: i for i, doc_id in enumerate(rDocs['ids'])}
+    order = [positions[doc_id] for doc_id in ids if doc_id in positions]
+    return {key: [rDocs[key][i] for i in order] for key in ('ids', 'documents', 'metadatas')}
 
 def build_prompt(data, docs, additional_docs=()):
     """
@@ -197,9 +211,8 @@ class FileProcessorThread(threading.Thread):
             prompt = build_prompt(data, rQuery['documents'][0][:nDocs])
             modelName = self.llm_draft_model
         else:
-            #list(set()) does a dedupe of the ids
             ids_for_fetch = get_prior_doc_ids_from_data(data)
-            rPriorDocs = self.collection.get(ids=ids_for_fetch)
+            rPriorDocs = get_docs_in_order(self.collection, ids_for_fetch)
             modelName = self.llm_revise_model
             additionalDocs = ()
             if data['type'] == "followup":
