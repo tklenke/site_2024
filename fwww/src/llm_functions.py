@@ -211,7 +211,7 @@ class FileProcessorThread(threading.Thread):
             if data['type'] == "followup":
                 rQuery = self.get_query_results(data['query'])
                 additionalDocs = rQuery['documents'][0]
-            prompt = build_prompt(data, rPriorDocs['documents'][0], additionalDocs)
+            prompt = build_prompt(data, rPriorDocs['documents'], additionalDocs)
  
     # Optional: specify what data to include (ids are always included)
     #include=["metadatas", "documents"] )
