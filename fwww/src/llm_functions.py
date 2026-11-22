@@ -160,7 +160,7 @@ class FileProcessorThread(threading.Thread):
 
         self.set_models()
         self.set_docs_params()
-        self.set_prompts()
+        self.set_embed_prefix()
         super().__init__()
         self.start()  # Start the thread immediately
 
@@ -178,10 +178,8 @@ class FileProcessorThread(threading.Thread):
         self.max_draft_documents = max_draft_documents
         return
     
-    def set_prompts(self, prefix="", initial_prompt="", secondary_prompt=" Use the following pieces of context to answer the users question. ----- "):
+    def set_embed_prefix(self, prefix=""):
         self.embed_prefix = prefix
-        self.initial_prompt = initial_prompt
-        self.secondary_prompt = secondary_prompt
         return
     
     def get_query_results(self, question):

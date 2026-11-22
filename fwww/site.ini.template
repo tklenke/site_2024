@@ -30,8 +30,6 @@ LLM = gpt-4o-mini
 
 [PROMPTS]
 PREFIX = search_query:
-INITIAL =
-SECONDARY = Use the following pieces of context to answer the users question:
 
 [OPTIONS]
 SHOW_REVISE = True
