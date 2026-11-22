@@ -1,5 +1,6 @@
 #project specific
 data/
+evaluation/output/
 .env_openai_key
 export_openai_key.sh
 site_local.ini

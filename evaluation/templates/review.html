@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rate the answers</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 60rem; margin: 0 auto; padding: 0 1rem 4rem; color: #222; background: #fff; }
+  #bar { position: sticky; top: 0; background: #fff; border-bottom: 1px solid #bbb; padding: .6rem 0; }
+  #failed { color: #b00020; font-weight: bold; }
+  section { margin-top: 2.5rem; }
+  .answer { border: 1px solid #bbb; border-radius: 6px; padding: .5rem 1rem 1rem; margin: 1rem 0; }
+  .answer.done { border-color: #2e7d32; }
+  .controls label { margin-right: 1.2rem; white-space: nowrap; }
+  textarea { width: 100%; box-sizing: border-box; margin-top: .5rem; font: inherit; }
+  pre { white-space: pre-wrap; background: #f4f4f4; padding: 1rem; }
+</style>
+</head>
+<body>
+<div id="bar"><span id="progress"></span> <span id="saved"></span> <span id="failed"></span></div>
+{% for question in questions %}
+<section>
+  <h2>{{ question.question_id }} ({{ question.kind }}): {{ question.question }}</h2>
+  {% for answer in question.answers %}
+  {% set name = question.question_id ~ "-" ~ answer.position %}
+  <div class="answer" data-question="{{ question.question_id }}" data-position="{{ answer.position }}">
+    <h3>Answer {{ answer.position }}</h3>
+    {{ answer.html | safe }}
+    <div class="controls">
+      {% for rating in ratings %}
+      <label><input type="radio" name="{{ name }}" value="{{ rating }}"{% if answer.rating.rating == rating %} checked{% endif %}> {{ rating.replace("_", " ") }}</label>
+      {% endfor %}
+      <label><input type="checkbox"{% if answer.rating.factual_error %} checked{% endif %}> factual error</label>
+      <textarea rows="2" placeholder="Note (what is wrong, optional)">{{ answer.rating.note }}</textarea>
+    </div>
+  </div>
+  {% endfor %}
+  <details><summary>What was sent to the models</summary><pre>{{ question.prompt }}</pre></details>
+</section>
+{% endfor %}
+<script>
+  const answers = [...document.querySelectorAll(".answer")];
+  const unsaved = new Set();
+
+  function showProgress() {
+    const rated = answers.filter(a => a.querySelector("input[type=radio]:checked"));
+    answers.forEach(a => a.classList.toggle("done", rated.includes(a)));
+    document.getElementById("progress").textContent = `${rated.length} of ${answers.length} rated.`;
+    document.getElementById("failed").textContent = unsaved.size ? `${unsaved.size} not saved.` : "";
+    document.getElementById("saved").textContent = unsaved.size ? "" : "All saved.";
+  }
+
+  async function save(answer) {
+    unsaved.add(answer);
+    const rating = answer.querySelector("input[type=radio]:checked");
+    try {
+      const response = await fetch("/rate", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          question_id: answer.dataset.question,
+          position: answer.dataset.position,
+          rating: rating ? rating.value : null,
+          factual_error: answer.querySelector("input[type=checkbox]").checked,
+          note: answer.querySelector("textarea").value
+        })
+      });
+      if (response.ok) unsaved.delete(answer);
+    } catch (e) {
+      console.error(e);
+    }
+    showProgress();
+  }
+
+  answers.forEach(a => a.addEventListener("change", () => save(a)));
+  answers.forEach(a => a.addEventListener("input", e => {
+    if (e.target.tagName === "TEXTAREA") {
+      unsaved.add(a);
+      showProgress();
+    }
+  }));
+  window.addEventListener("beforeunload", e => { if (unsaved.size) e.preventDefault(); });
+  showProgress();
+</script>
+</body>
+</html>

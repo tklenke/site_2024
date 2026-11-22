@@ -17,7 +17,7 @@ from src.site_config import read_config
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 SITE_DIRECTORY = os.path.join(DIRECTORY, "..", "fwww")
 QUESTIONS_CSV = os.path.join(DIRECTORY, "..", "..", "ml", "docs", "plans", "refresh_questions.csv")
-OUTPUT_DIRECTORY = os.path.join(DIRECTORY, "..", "data", "evaluation")
+OUTPUT_DIRECTORY = os.path.join(DIRECTORY, "output")
 
 # dollars per million tokens, input and output, for standard calls; read on 2026-11-22 from
 # https://developers.openai.com/api/docs/pricing
