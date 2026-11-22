@@ -29,6 +29,9 @@ Your task is to answer the follow up question to the draft response using the ad
 and previous content as context.
 """
 
+#stands in for the additional content of a follow-up that has none
+no_additional_content="None. Every document retrieved for the follow up question is in the previous content."
+
 #------------FUNCTIONS---------------
 # find the number of responses within the defined thresholds
 def get_num_draft_docs(results, fMaxDistance, nMinDocs, nMaxDraftDocs):
@@ -91,7 +94,7 @@ def build_prompt(data, docs, additional_docs=()):
     if data['type'] == "new":
         prompt = f"{initial_prompt} {data['query']} {secondary_prompt} {doctext}"
     elif data['type'] == "followup":
-        additionaldocs = '\n\n'.join(additional_docs)
+        additionaldocs = '\n\n'.join(additional_docs) or no_additional_content
         prompt = f"""{followup_prompt} USER QUESTION: {data['query']}
                         DRAFT RESPONSE: {data['result']['answer']} PREVIOUS CONTENT: {doctext}
                         ADDITIONAL_CONTENT: {additionaldocs}"""
@@ -221,7 +224,9 @@ class FileProcessorThread(threading.Thread):
             if data['type'] == "followup":
                 rQuery = self.get_query_results(data['query'])
                 nDocs = get_num_draft_docs(rQuery,self.max_distance,self.min_documents,self.max_draft_documents)
-                additionalDocs = rQuery['documents'][0][:nDocs]
+                #a document of the previous content is not sent again
+                additionalDocs = [text for doc_id, text in zip(rQuery['ids'][0][:nDocs], rQuery['documents'][0])
+                                  if doc_id not in rPriorDocs['ids']]
             prompt = build_prompt(data, rPriorDocs['documents'], additionalDocs)
  
     # Optional: specify what data to include (ids are always included)

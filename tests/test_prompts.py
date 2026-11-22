@@ -3,8 +3,8 @@
 
 import pytest
 
-from src.llm_functions import build_prompt, followup_prompt, initial_prompt, revise_prompt, \
-    secondary_prompt
+from src.llm_functions import build_prompt, followup_prompt, initial_prompt, \
+    no_additional_content, revise_prompt, secondary_prompt
 
 QUESTION = "how many seats does the cozy have"
 ANSWER = "It has four seats."
@@ -37,6 +37,14 @@ def test_followup_prompt():
                                  "ADDITIONAL_CONTENT: third chunk fourth chunk").split()
     assert "first chunk\n\nsecond chunk" in strPrompt
     assert "third chunk\n\nfourth chunk" in strPrompt
+
+
+def test_followup_prompt_without_additional_documents():
+    strPrompt = build_prompt(job_data("followup"), ["first chunk", "second chunk"], [])
+    assert strPrompt.split() == (f"{followup_prompt} USER QUESTION: {QUESTION} "
+                                 f"DRAFT RESPONSE: {ANSWER} "
+                                 "PREVIOUS CONTENT: first chunk second chunk "
+                                 f"ADDITIONAL_CONTENT: {no_additional_content}").split()
 
 
 @pytest.mark.parametrize("strPrompt", [initial_prompt, secondary_prompt, revise_prompt,

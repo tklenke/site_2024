@@ -3,6 +3,8 @@
 
 import pytest
 
+from src.llm_functions import no_additional_content
+
 
 @pytest.fixture
 def prior_docs(collection):
@@ -131,6 +133,33 @@ def test_followup_additional_content_is_cut_like_a_first_answer(processor, retri
     processor.process_question(followup_data(PROVIDED, RELATED))
     _, strAdditional = contents(processor.lstPrompts[0])
     assert strAdditional == joined(retrieved["documents"][0][:intExpected])
+
+
+def test_followup_additional_content_leaves_out_the_previous_documents(processor, retrieved):
+    set_cutoff(processor, NO_CUTOFF)
+    lstTexts = retrieved["documents"][0]
+    lstProvided = [PROVIDED[0], retrieved["ids"][0][2]]
+    processor.process_question(followup_data(lstProvided, RELATED))
+    _, strAdditional = contents(processor.lstPrompts[0])
+    assert strAdditional == joined(lstTexts[:2] + lstTexts[3:15])
+
+
+def test_followup_additional_content_keeps_a_related_document(processor, retrieved):
+    set_cutoff(processor, NO_CUTOFF)
+    processor.process_question(followup_data(PROVIDED, [retrieved["ids"][0][2]]))
+    _, strAdditional = contents(processor.lstPrompts[0])
+    assert strAdditional == joined(retrieved["documents"][0][:15])
+
+
+def test_followup_with_every_retrieved_document_in_the_previous_content(processor, collection,
+                                                                        retrieved):
+    set_cutoff(processor, NO_CUTOFF)
+    lstProvided = retrieved["ids"][0][:15]
+    dctRecord = processor.process_question(followup_data(lstProvided, RELATED))
+    strPrevious, strAdditional = contents(processor.lstPrompts[0])
+    assert strPrevious == joined(texts_of(collection, lstProvided))
+    assert strAdditional == no_additional_content
+    assert [d["id"] for d in dctRecord["provided_docs"]] == lstProvided
 
 
 def test_followup_record_is_previous_then_additional(processor, retrieved):
