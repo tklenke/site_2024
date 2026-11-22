@@ -181,6 +181,9 @@ def update_process_info(info, directory, processId=None, filename=None ):
 def update_process_status(status, directory, processId=None, filename=None ):
     data = {}
     data = get_process_info(directory, processId, filename)
+    #saving the status of an unreadable job would replace what its file holds
+    if not data:
+        raise ValueError(f"Job file {get_job_path(directory, processId, filename)} could not be read")
     data["status"] = status
     data[ status + "_time"] = time.time()
     update_process_info(data, directory, processId, filename )

@@ -1,5 +1,5 @@
 import chromadb, ollama, openai
-import threading, os, time, json, queue
+import threading, os, time, json, queue, traceback
 from src.site_functions import get_process_info, update_process_status, update_process_info
 
 #--------- CONSTANTs -------------
@@ -279,6 +279,37 @@ class FileProcessorThread(threading.Thread):
                                        if doc['id'] not in rPriorDocs['ids']]
         return r
 
+    def process_job(self, filename):
+        data = get_process_info(filename=filename,directory=self.job_path)
+        if data['status'] not in ("new","revise","followup"):
+            return
+        #set status to started
+        qType = data['status']
+        data = update_process_status("start",filename=filename,directory=self.job_path)
+        #put new, revised or followup into data
+        data['type'] = qType
+        # Validate required keys and handle missing ones gracefully
+        if "query" not in data or data.get("query") is None:
+            print(f"{filename}: Missing 'query' key or null value in JSON data.")
+            update_process_status("error",filename=filename, directory=self.job_path)
+            return
+        #run
+        result = self.process_question(data)
+        data["result"] = result
+        #set status to completed
+        data['status'] = 'complete'
+        data['complete_time'] = time.time()
+        data['elapsed'] = data['complete_time'] - data['created']
+        update_process_info(data, filename=filename, directory=self.job_path)
+
+    # called while the exception is being handled
+    def mark_job_failed(self, filename):
+        print(f"{filename}: Job failed.\n{traceback.format_exc()}")
+        try:
+            update_process_status("error",filename=filename,directory=self.job_path)
+        except Exception as e:
+            print(f"{filename}: Could not set the status to error. {e!r}")
+
     def run(self):
         processedJobs = []
         while True:
@@ -288,26 +319,10 @@ class FileProcessorThread(threading.Thread):
             for filename in os.listdir(self.job_path):
                 if filename in processedJobs:
                     continue
-                data = get_process_info(filename=filename,directory=self.job_path)
-                if data['status'] not in ("new","revise","followup"):
-                    processedJobs.append(filename)
-                    continue
-                #set status to started
-                qType = data['status']
-                data = update_process_status("start",filename=filename,directory=self.job_path)
-                #put new, revised or followup into data
-                data['type'] = qType
-                # Validate required keys and handle missing ones gracefully
-                if "query" not in data or data.get("query") is None:
-                    print(f"{filename}: Missing 'query' key or null value in JSON data.")
-                    update_process_status("error",filename=filename, directory=self.job_path)
-                    continue
-                #run
-                result = self.process_question(data)
-                data["result"] = result
-                #set status to completed
-                data['status'] = 'complete'
-                data['complete_time'] = time.time()
-                data['elapsed'] = data['complete_time'] - data['created']
-                update_process_info(data, filename=filename, directory=self.job_path)
+                try:
+                    self.process_job(filename)
+                except Exception:
+                    #one job must not end the thread
+                    self.mark_job_failed(filename)
+                #a failed job is never tried again, as that could pay again
                 processedJobs.append(filename)
