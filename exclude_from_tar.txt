@@ -1,6 +1,7 @@
 __pycache__
 jobs/*
 venv
+.venv
 www
 server/certbot
 fwww/site.ini

@@ -13,6 +13,11 @@ Website 2024 revision.  Docker based.  Nginx, flask and supporting ollama, chrom
   + replace fullchain.pem and privkey.pm symlinks with the actual files fullchain1.pem and privkey1.pm
   copied over from the current archive 
 
+# Run the tests
+python3 -m venv .venv && .venv/bin/pip install -r requirements_test.txt
+.venv/bin/python -m pytest
+  + the tests that read the document collection need Chroma: docker compose up -d chroma-rag
+
 # Make new tar file
 tar -czf ../project.tar.gz -X exclude_from_tar.txt ~/project/site_2024
 
