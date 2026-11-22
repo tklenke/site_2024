@@ -17,6 +17,7 @@ Website 2024 revision.  Docker based.  Nginx, flask and supporting ollama, chrom
 python3 -m venv .venv && .venv/bin/pip install -r requirements_test.txt
 .venv/bin/python -m pytest
   + the tests that read the document collection need Chroma: docker compose up -d chroma-rag
+  + the test of the page that waits for an answer needs node
 
 # Make new tar file
 tar -czf ../project.tar.gz -X exclude_from_tar.txt ~/project/site_2024
