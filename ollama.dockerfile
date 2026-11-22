@@ -1,4 +1,4 @@
-FROM ollama/ollama
+FROM ollama/ollama:0.40.17
 # Install required dependencies
 RUN echo "getting embed models"
 # Install the models
