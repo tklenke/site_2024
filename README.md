@@ -4,14 +4,10 @@ Website 2024 revision.  Docker based.  Nginx, flask and supporting ollama, chrom
 ### Maintenance
 # Renew ssl certificate
   + keep nginx running as certbot will place a file and let nginx serve it to confirm ownership
-  + run the docker command shown in docker-certbot.yaml
-  + use sudo or sudo -s
-  + if there is a new directory in the certbot/live directory e.g. m24tom.com-0001 then remove the
-  old m24tom.com and move the -0001 to just m24tom.com
-  + copy contents of current certbot/archive/m24tom.com[-nnnn] directory into the live/m24tom.com directory
-  + ensure the symlinks for cert.pm and chain.pm point to the correct archive directory above
-  + replace fullchain.pem and privkey.pm symlinks with the actual files fullchain1.pem and privkey1.pm
-  copied over from the current archive 
+  + from the site directory on the server: sudo ./sudo_renew_cert.sh
+  + it asks certbot for m24tom.com and www.m24tom.com, checks the certificate, puts the files in
+  server/certbot/conf/live/m24tom.com and restarts the containers
+  + when certbot asks whether to expand the existing certificate, answer Expand
 
 # Run the tests
 python3 -m venv .venv && .venv/bin/pip install -r requirements_test.txt
