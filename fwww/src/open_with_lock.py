@@ -4,7 +4,7 @@ def get_flags_from_mode(mode):
     if mode == 'r':
         return os.O_RDONLY
     elif mode == 'w':
-        return os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+        return os.O_WRONLY | os.O_CREAT
     elif mode == 'a':
         return os.O_WRONLY | os.O_CREAT | os.O_APPEND
     else:
@@ -47,6 +47,7 @@ def open_with_lock(path, mode='r', flags=os.O_CREAT | os.O_EXCL, max_retries=50,
                     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 except OSError as e:
                     if e.errno == errno.EWOULDBLOCK:
+                        os.close(fd)
                         print(f"File {path} is currently locked. Retrying {retries+1}/{max_retries}...")
                         time.sleep(wait_secs)
                         retries += 1
@@ -68,6 +69,7 @@ def open_with_lock(path, mode='r', flags=os.O_CREAT | os.O_EXCL, max_retries=50,
                 fcntl.flock(fd, fcntl.LOCK_EX)
         except OSError as e:
             if e.errno == errno.EWOULDBLOCK:
+                os.close(fd)
                 print(f"File {path} is locked by another process. Retrying {retries+1}/{max_retries}...")
                 time.sleep(wait_secs)
                 retries += 1
@@ -75,6 +77,10 @@ def open_with_lock(path, mode='r', flags=os.O_CREAT | os.O_EXCL, max_retries=50,
             else:
                 print(f"open_with_lock 3 exception {e}")
                 raise
+
+        # Empty the file only once the lock is held, so a reader never sees it empty
+        if 'w' in mode:
+            os.ftruncate(fd, 0)
 
         # Return a file object instead of just the file descriptor
         return os.fdopen(fd, mode)
