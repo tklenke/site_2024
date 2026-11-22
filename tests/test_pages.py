@@ -125,12 +125,14 @@ def test_unknown_column_is_not_found(client, jobs_dir):
 
 # ---- a failed job
 @pytest.mark.parametrize("dctJob", [dict(RUNNING, status="error"),
-                                    dict(DONE, process_id="run", status="error")])
+                                    dict(DONE, process_id="run", status="error"),
+                                    dict(RUNNING, status="error", error_reason="unknown")])
 def test_status_of_a_failed_job_tells_the_visitor(client, jobs_dir, dctJob):
     write_job(jobs_dir, dctJob)
     assert client.get("/cozyrag/run/status").get_json() == {
         "status": "error",
-        "status_text": "Your question could not be answered. Please try again."}
+        "status_text": "The question could not be answered. Please try again in a few minutes. "
+                       "If it keeps failing, please let Tom know."}
 
 
 # ---- feedback

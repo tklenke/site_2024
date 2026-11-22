@@ -184,7 +184,7 @@ def update_process_info(info, directory, processId=None, filename=None ):
 #####
 #  Write process status to process file and return json data as dictionary
 #####
-def update_process_status(status, directory, processId=None, filename=None ):
+def update_process_status(status, directory, processId=None, filename=None, error_reason=None ):
     data = {}
     data = get_process_info(directory, processId, filename)
     #saving the status of an unreadable job would replace what its file holds
@@ -192,6 +192,10 @@ def update_process_status(status, directory, processId=None, filename=None ):
         raise ValueError(f"Job file {get_job_path(directory, processId, filename)} could not be read")
     data["status"] = status
     data[ status + "_time"] = time.time()
+    #a reason belongs only to the failure it was saved with
+    data.pop("error_reason", None)
+    if error_reason:
+        data["error_reason"] = error_reason
     update_process_info(data, directory, processId, filename )
     return data
 

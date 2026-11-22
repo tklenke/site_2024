@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, url_for, flash, redirect, \
                   jsonify, session, abort
 import time, os, json, queue
 from src.llm_functions import FileProcessorThread
+from src.error_reasons import get_error_text
 from src.site_config import read_config
 from src.site_functions import new_question, new_revision, \
             get_process_info, set_process_info_key_value, url_from_source, \
@@ -136,7 +137,7 @@ def cozyrag_status(process_id):
     if data['status'] == 'complete':
         status['result_html'] = render_template('cozyrag_results.html', results=get_job_for_display(data), show_revise=cfg.getboolean('OPTIONS','SHOW_REVISE'))
     elif data['status'] == 'error':
-        status['status_text'] = "Your question could not be answered. Please try again."
+        status['status_text'] = get_error_text(data.get('error_reason'))
     else:
         status['status_text'] = "Status: " + data['status'] + "." * (int(cur_time) % 10)
     return jsonify(status)

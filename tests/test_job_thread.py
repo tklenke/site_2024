@@ -2,11 +2,11 @@
 # ABOUTME: Failures come from real unreachable services and real malformed job files.
 
 import json
-import socket
 
 import ollama
 import pytest
 
+from job_loop import run_jobs
 from src.site_functions import update_process_status
 
 PROVIDED = ["cb__ref_info_-_kitplane___html101", "ttXB7VHdy1w0"]
@@ -19,50 +19,8 @@ FOLLOWUP = dict(REVISE, process_id="followup", status="followup", query="and how
 NO_QUERY = {"process_id": "noquery", "status": "new", "created": 1.0}
 
 
-class EndOfJobs(Exception):
-    """Raised when the loop asks for a job after the last one."""
-
-
-class JobQueue:
-    """Gives the loop the jobs in turn. A job's file is written when the loop asks for the job."""
-
-    def __init__(self, pathJobs, lstJobs):
-        self.pathJobs = pathJobs
-        self.lstJobs = list(lstJobs)
-
-    def get(self):
-        if not self.lstJobs:
-            raise EndOfJobs
-        job = self.lstJobs.pop(0)
-        if isinstance(job, dict):
-            (self.pathJobs / f"{job['process_id']}.json").write_text(json.dumps(job))
-        else:
-            strName, strContent = job
-            (self.pathJobs / strName).write_text(strContent)
-        return job
-
-    def task_done(self):
-        pass
-
-
-def run_jobs(processor, pathJobs, lstJobs):
-    """Runs the job loop until it asks for a job after the last one."""
-    processor.job_path = str(pathJobs)
-    processor.job_queue = JobQueue(pathJobs, lstJobs)
-    with pytest.raises(EndOfJobs):
-        processor.run()
-
-
 def read_job(pathJobs, strId):
     return json.loads((pathJobs / f"{strId}.json").read_text())
-
-
-@pytest.fixture
-def unreachable():
-    """An address at which nothing listens."""
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return f"http://127.0.0.1:{sock.getsockname()[1]}"
 
 
 @pytest.fixture
@@ -164,3 +122,10 @@ def test_the_status_of_an_unreadable_job_is_not_set(tmp_path, capsys):
         update_process_status("error", str(tmp_path), filename="bad.json")
     assert pathJob.read_text() == "not json"
     assert "Error decoding JSON file: bad.json" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("dctReason, strExpected", [({}, None), ({"error_reason": "b"}, "b")])
+def test_a_status_is_saved_with_its_own_reason_only(tmp_path, dctReason, strExpected):
+    (tmp_path / "job.json").write_text(json.dumps(REVISE | {"error_reason": "a"}))
+    update_process_status("error", str(tmp_path), filename="job.json", **dctReason)
+    assert read_job(tmp_path, "job").get("error_reason") == strExpected

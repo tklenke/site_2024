@@ -2,6 +2,7 @@
 # ABOUTME: Gives a processor on the real collection, and the Flask app with real job files.
 
 import os
+import socket
 from types import SimpleNamespace
 
 import chromadb
@@ -116,3 +117,11 @@ def jobs_dir(site_app, tmp_path):
 @pytest.fixture
 def client(site_app, jobs_dir):
     return site_app.app.test_client()
+
+
+@pytest.fixture
+def unreachable():
+    """An address at which nothing listens."""
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return f"http://127.0.0.1:{sock.getsockname()[1]}"

@@ -1,5 +1,6 @@
 import chromadb, ollama, openai
 import threading, os, time, json, queue, traceback
+from src.error_reasons import get_error_reason
 from src.site_functions import get_process_info, update_process_status, update_process_info
 
 #--------- CONSTANTs -------------
@@ -232,29 +233,12 @@ class FileProcessorThread(threading.Thread):
     # Optional: specify what data to include (ids are always included)
     #include=["metadatas", "documents"] )
         if self.use_gpt:
-            #set default incase of error
-            r['model'] = modelName
-            r['prompt tokens'] = 0
-            r['completion tokens'] = 0
             #ask the model
-            try:
-                completion = self.openaiclient.chat.completions.create(model=modelName,messages=[{"role": "user", "content": prompt}])
-                r['answer'] = completion.choices[0].message.content
-                r['model'] = completion.model
-                r['prompt tokens'] = completion.usage.prompt_tokens
-                r['completion tokens'] = completion.usage.completion_tokens
-            except openai.APIError as e:
-                #Handle API error here, e.g. retry or log
-                r['answer'] = f"OpenAI API returned an API Error: {e}"
-                pass
-            except openai.APIConnectionError as e:
-                #Handle connection error here
-                r['answer'] = f"Failed to connect to OpenAI API: {e}"
-                pass
-            except openai.RateLimitError as e:
-                #Handle rate limit error (we recommend using exponential backoff)
-                r['answer'] = f"OpenAI API request exceeded rate limit: {e}"
-                pass
+            completion = self.openaiclient.chat.completions.create(model=modelName,messages=[{"role": "user", "content": prompt}])
+            r['answer'] = completion.choices[0].message.content
+            r['model'] = completion.model
+            r['prompt tokens'] = completion.usage.prompt_tokens
+            r['completion tokens'] = completion.usage.completion_tokens
         else:
             #Fake it
             r['answer'] = lorem_ipsum_string
@@ -303,10 +287,11 @@ class FileProcessorThread(threading.Thread):
         update_process_info(data, filename=filename, directory=self.job_path)
 
     # called while the exception is being handled
-    def mark_job_failed(self, filename):
+    def mark_job_failed(self, filename, exception):
         print(f"{filename}: Job failed.\n{traceback.format_exc()}")
         try:
-            update_process_status("error",filename=filename,directory=self.job_path)
+            update_process_status("error",filename=filename,directory=self.job_path,
+                                  error_reason=get_error_reason(exception))
         except Exception as e:
             print(f"{filename}: Could not set the status to error. {e!r}")
 
@@ -321,8 +306,8 @@ class FileProcessorThread(threading.Thread):
                     continue
                 try:
                     self.process_job(filename)
-                except Exception:
+                except Exception as e:
                     #one job must not end the thread
-                    self.mark_job_failed(filename)
+                    self.mark_job_failed(filename, e)
                 #a failed job is never tried again, as that could pay again
                 processedJobs.append(filename)
