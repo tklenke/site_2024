@@ -1,0 +1,4 @@
+# Copy to site_local.ini, mode 600, and put in the keys. A setting here wins over site.ini.
+[KEYS]
+SESSION = yourkey
+OPENAI = yourkey

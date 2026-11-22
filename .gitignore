@@ -3,6 +3,7 @@ data/
 .env_openai_key
 export_openai_key.sh
 site.ini
+site_local.ini
 server/certbot/
 
 # Byte-compiled / optimized / DLL files

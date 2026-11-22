@@ -4,4 +4,5 @@ venv
 .venv
 www
 server/certbot
+fwww/site_local.ini
 fwww/site.ini
