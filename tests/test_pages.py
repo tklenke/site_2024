@@ -144,6 +144,20 @@ def test_other_feedback_is_ignored(client, jobs_dir, dctForm):
         assert "_flashes" not in session
 
 
+@pytest.mark.parametrize("strContent", [None, "not json"])
+def test_feedback_on_a_job_that_cannot_be_read_writes_nothing(client, jobs_dir, capsys, strContent):
+    pathJob = jobs_dir / "bad.json"
+    if strContent is not None:
+        pathJob.write_text(strContent)
+    set_session(client, process_id="bad")
+    response = client.post("/cozyrag/feedback", data={"satisfaction": "ok"})
+    assert response.location == "/cozyrag/query"
+    assert (pathJob.read_text() if pathJob.exists() else None) == strContent
+    with client.session_transaction() as session:
+        assert "_flashes" not in session
+    assert "JSON file" in capsys.readouterr().out
+
+
 # ---- asking a question
 def test_question_creates_one_job(client, jobs_dir):
     response = client.post("/cozyrag/query", data={"question": "what engine",

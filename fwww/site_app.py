@@ -146,6 +146,9 @@ def cozyrag_feedback():
     satisfaction = request.form.get("satisfaction")
     if not session.get('process_id') or satisfaction not in FEEDBACK_RATINGS:
         return redirect(url_for('cozyrag_query'))
+    #saving a rating for a job that cannot be read would leave a file with only the rating
+    if not get_process_info(cfg.get('PATHS','JOBS_DiR'), session['process_id']):
+        return redirect(url_for('cozyrag_query'))
     flash(f"Thank you for the feedback that the last response was {satisfaction}")
     set_process_info_key_value('satisfaction',satisfaction,cfg.get('PATHS','JOBS_DiR'), session['process_id'])
     return redirect(url_for('cozyrag_query'))
