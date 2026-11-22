@@ -4,6 +4,4 @@ gunicorn
 openai
 ollama
 Markdown
-Flask-Markdown
-python-dotenv
 chromadb-client==1.5.9
