@@ -200,3 +200,19 @@ def test_the_retriever_has_the_settings_of_the_site(collection):
     assert retriever.embed_prefix == "search_query:"
     assert retriever.collection.name == "nomic-embed-text"
     assert FileProcessorThread.instance is None
+
+
+def test_only_the_questions_named_are_read(tmp_path):
+    pathCsv = tmp_path / "questions.csv"
+    pathCsv.write_text("question_id,use,kind,question\nQ01,batch1,factual,one\n"
+                       "Q02,batch1,broad,two\nQ03,batch1,broad,three\n")
+    lstQuestions = read_questions(pathCsv, "batch1", ["Q03", "Q01"])
+    assert [dctQuestion["question_id"] for dctQuestion in lstQuestions] == ["Q01", "Q03"]
+
+
+def test_a_named_question_that_is_not_in_the_batch_is_refused(tmp_path):
+    pathCsv = tmp_path / "questions.csv"
+    pathCsv.write_text("question_id,use,kind,question\nQ01,batch1,factual,one\n"
+                       "Q02,batch2,broad,two\n")
+    with pytest.raises(ValueError, match="Q02"):
+        read_questions(pathCsv, "batch1", ["Q01", "Q02"])

@@ -28,18 +28,24 @@ MODEL_PRICES = {
 }
 
 
-def read_questions(strPath, strUse):
+def read_questions(strPath, strUse, lstIds=None):
     """
-    Reads the questions of one batch.
+    Reads the questions of one batch, or those of them that are named.
 
     :param strPath: The path of the question file.
     :param strUse: The value of the 'use' column.
+    :param lstIds: The ids of the questions wanted; all of the batch when not given.
     :return: A list of dictionaries with 'question_id', 'kind' and 'question', in file order.
     """
     with open(strPath, newline="") as file:
         lstRows = [row for row in csv.DictReader(file) if row["use"] == strUse]
     if not lstRows:
         raise ValueError(f"No questions with use {strUse} in {strPath}")
+    if lstIds:
+        lstMissing = sorted(set(lstIds) - {row["question_id"] for row in lstRows})
+        if lstMissing:
+            raise ValueError(f"Not in {strUse}: {', '.join(lstMissing)}")
+        lstRows = [row for row in lstRows if row["question_id"] in lstIds]
     return [{key: row[key] for key in ("question_id", "kind", "question")} for row in lstRows]
 
 
@@ -171,6 +177,7 @@ def main():
     parser = argparse.ArgumentParser(description="Puts a batch of questions to models (paid).")
     parser.add_argument("batch", help="value of the 'use' column, for example batch1")
     parser.add_argument("--models", nargs="+", required=True, choices=list(MODEL_PRICES))
+    parser.add_argument("--ids", nargs="+", help="only these questions of the batch")
     parser.add_argument("--questions", default=QUESTIONS_CSV)
     parser.add_argument("--output", default=OUTPUT_DIRECTORY)
     parser.add_argument("--chroma", default="localhost")
@@ -179,7 +186,7 @@ def main():
     cfg = read_config(SITE_DIRECTORY)
     retriever = create_retriever(cfg, args.chroma, args.ollama)
     run_questions(retriever, openai.OpenAI(api_key=cfg.get("KEYS", "OPENAI")),
-                  read_questions(args.questions, args.batch), args.models, args.output)
+                  read_questions(args.questions, args.batch, args.ids), args.models, args.output)
 
 
 if __name__ == "__main__":
