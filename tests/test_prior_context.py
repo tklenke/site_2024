@@ -1,4 +1,4 @@
-# ABOUTME: Tests that revise and follow-up prompts carry the full text of every prior document.
+# ABOUTME: Tests which documents revise and follow-up prompts and their records carry, in order.
 # ABOUTME: Reads real documents from the local Chroma service; only the model call is recorded.
 
 import pytest
@@ -20,17 +20,6 @@ def job_data(strType, dctPriorDocs):
 def test_revise_prompt_has_every_prior_document(processor, prior_docs):
     processor.process_question(job_data("revise", prior_docs))
     for strText in prior_docs["documents"]:
-        assert strText in processor.lstPrompts[0]
-
-
-def test_followup_prompt_has_every_prior_document(processor, collection, prior_docs):
-    lstEmbeddings = collection.get(limit=1, offset=100, include=["embeddings"])["embeddings"]
-    dctQuery = collection.query(query_embeddings=lstEmbeddings, n_results=5)
-    processor.get_query_results = lambda question: dctQuery
-
-    processor.process_question(job_data("followup", prior_docs))
-
-    for strText in prior_docs["documents"] + dctQuery["documents"][0]:
         assert strText in processor.lstPrompts[0]
 
 
@@ -89,3 +78,90 @@ def test_a_document_no_longer_in_the_collection_is_left_out(processor, collectio
     strPrompt, dctRecord = revise(processor, PROVIDED, ["nosuchdocument0"] + RELATED)
     assert [d["id"] for d in dctRecord["provided_docs"]] == PROVIDED + RELATED
     assert "\n\n".join(texts_of(collection, PROVIDED + RELATED)) in strPrompt
+
+
+# ---- a follow-up
+NO_CUTOFF = 10.
+ALL_CUT_OFF = 0.
+
+
+@pytest.fixture
+def retrieved(processor, collection):
+    """The 60 documents retrieved for a follow-up question."""
+    lstEmbeddings = collection.get(ids=["news_7810"], include=["embeddings"])["embeddings"]
+    dctQuery = collection.query(query_embeddings=lstEmbeddings, n_results=60)
+    processor.get_query_results = lambda question: dctQuery
+    return dctQuery
+
+
+def followup_on(dctResult):
+    return {"type": "followup", "query": "and how many doors", "result": dctResult}
+
+
+def followup_data(lstProvided, lstRelated):
+    return followup_on(revise_data(lstProvided, lstRelated)["result"])
+
+
+def set_cutoff(processor, fMaxDistance):
+    processor.set_docs_params(max_distance=fMaxDistance, min_documents=5, max_documents=60,
+                              max_draft_documents=15)
+
+
+def contents(strPrompt):
+    """The previous and the additional content of a follow-up prompt."""
+    strPrevious, strAdditional = strPrompt.split("PREVIOUS CONTENT: ")[1].split(
+        "ADDITIONAL_CONTENT: ")
+    return strPrevious.strip(), strAdditional.strip()
+
+
+def joined(lstTexts):
+    return "\n\n".join(lstTexts).strip()
+
+
+def test_followup_previous_content_is_the_provided_documents(processor, collection, retrieved):
+    processor.process_question(followup_data(PROVIDED, RELATED))
+    strPrevious, _ = contents(processor.lstPrompts[0])
+    assert strPrevious == joined(texts_of(collection, PROVIDED))
+
+
+@pytest.mark.parametrize("fMaxDistance, intExpected", [(NO_CUTOFF, 15), (ALL_CUT_OFF, 5)])
+def test_followup_additional_content_is_cut_like_a_first_answer(processor, retrieved,
+                                                                fMaxDistance, intExpected):
+    set_cutoff(processor, fMaxDistance)
+    processor.process_question(followup_data(PROVIDED, RELATED))
+    _, strAdditional = contents(processor.lstPrompts[0])
+    assert strAdditional == joined(retrieved["documents"][0][:intExpected])
+
+
+def test_followup_record_is_previous_then_additional(processor, retrieved):
+    set_cutoff(processor, NO_CUTOFF)
+    dctRecord = processor.process_question(followup_data(PROVIDED, RELATED))
+    assert [d["id"] for d in dctRecord["provided_docs"]] == PROVIDED + retrieved["ids"][0][:15]
+    assert "related_docs" not in dctRecord
+
+
+def test_followup_record_has_no_document_twice(processor, retrieved):
+    set_cutoff(processor, NO_CUTOFF)
+    lstRetrieved = retrieved["ids"][0]
+    lstProvided = [PROVIDED[0], lstRetrieved[2]]
+    dctRecord = processor.process_question(followup_data(lstProvided, RELATED))
+    assert [d["id"] for d in dctRecord["provided_docs"]] == (
+        lstProvided + [strId for strId in lstRetrieved[:15] if strId != lstRetrieved[2]])
+
+
+def test_second_followup_adds_no_more_than_the_maximum(processor, collection, retrieved):
+    set_cutoff(processor, NO_CUTOFF)
+    dctFirst = processor.process_question(followup_data(PROVIDED, RELATED))
+    lstEmbeddings = collection.get(ids=["30SXLjAf9AY0"], include=["embeddings"])["embeddings"]
+    dctQuery = collection.query(query_embeddings=lstEmbeddings, n_results=60)
+    processor.get_query_results = lambda question: dctQuery
+
+    dctSecond = processor.process_question(followup_on(dctFirst))
+
+    lstFirst = [d["id"] for d in dctFirst["provided_docs"]]
+    lstSecond = [d["id"] for d in dctSecond["provided_docs"]]
+    strPrevious, strAdditional = contents(processor.lstPrompts[1])
+    assert lstSecond[:len(lstFirst)] == lstFirst
+    assert 0 < len(lstSecond) - len(lstFirst) <= 15
+    assert strPrevious == joined(texts_of(collection, lstFirst))
+    assert strAdditional == joined(dctQuery["documents"][0][:15])

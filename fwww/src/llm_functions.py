@@ -53,7 +53,10 @@ def get_num_draft_docs(results, fMaxDistance, nMinDocs, nMaxDraftDocs):
 
 def get_prior_doc_ids_from_data(data):
     r = data['result']
-    doc_lists = [r.get('provided_docs', []), r.get('related_docs', [])]
+    doc_lists = [r.get('provided_docs', [])]
+    #a follow-up gets only the documents the prior answer was given
+    if data['type'] != "followup":
+        doc_lists.append(r.get('related_docs', []))
     
     # Use a nested list comprehension to iterate over all documents 
     # in the available lists and extract their 'id'.
@@ -217,7 +220,8 @@ class FileProcessorThread(threading.Thread):
             additionalDocs = ()
             if data['type'] == "followup":
                 rQuery = self.get_query_results(data['query'])
-                additionalDocs = rQuery['documents'][0]
+                nDocs = get_num_draft_docs(rQuery,self.max_distance,self.min_documents,self.max_draft_documents)
+                additionalDocs = rQuery['documents'][0][:nDocs]
             prompt = build_prompt(data, rPriorDocs['documents'], additionalDocs)
  
     # Optional: specify what data to include (ids are always included)
@@ -266,7 +270,8 @@ class FileProcessorThread(threading.Thread):
         else:
             r['provided_docs'] = get_doc_list_from_result(rPriorDocs)
             if data['type'] == "followup":
-                r['provided_docs'] += get_doc_list_from_result(rQuery)
+                r['provided_docs'] += [doc for doc in get_doc_list_from_result(rQuery, nDocsTo=nDocs)
+                                       if doc['id'] not in rPriorDocs['ids']]
         return r
 
     def run(self):
