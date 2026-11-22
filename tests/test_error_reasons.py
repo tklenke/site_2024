@@ -30,12 +30,12 @@ def openai_answers(processor):
     """Makes the processor's OpenAI client call a server that gives the answer passed in."""
     lstServers = []
 
-    def start(intStatus, strCode=None, fDelay=0):
+    def start(intStatus, strCode=None, strType=None, fDelay=0):
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self):
                 self.rfile.read(int(self.headers["Content-Length"]))
                 time.sleep(fDelay)
-                binBody = json.dumps({"error": {"message": DETAIL, "type": None, "param": None,
+                binBody = json.dumps({"error": {"message": DETAIL, "type": strType, "param": None,
                                                 "code": strCode}}).encode()
                 self.send_response(intStatus)
                 self.send_header("Content-Type", "application/json")
@@ -90,10 +90,25 @@ def test_the_visitor_is_shown_what_tom_has_to_fix(openai_answers, failed, intSta
     assert strText == let_tom_know(strPhrase)
 
 
-@pytest.mark.parametrize("intStatus, strCode", [
-    (429, "rate_limit_exceeded"), (429, None), (400, None), (500, None), (503, None)])
-def test_other_failures_have_no_reason(openai_answers, failed, intStatus, strCode):
-    openai_answers(intStatus, strCode)
+@pytest.mark.parametrize("strCode, strType", [
+    ("credit_balance_exhausted", None), ("organization_spend_limit_exceeded", None),
+    ("project_spend_limit_exceeded", None), ("organization_usage_limit_exceeded", None),
+    ("insufficient_quota", None), ("insufficient_quota", "insufficient_quota"),
+    (None, "insufficient_quota"), ("another_code", "insufficient_quota")])
+def test_the_visitor_is_shown_that_the_budget_is_used_up(openai_answers, failed, strCode, strType):
+    openai_answers(429, strCode, strType)
+    dctJob, strOut, strText = failed()
+    assert dctJob["error_reason"] == "openai_budget"
+    assert DETAIL in strOut
+    assert strText == let_tom_know("OpenAI budget used up")
+
+
+@pytest.mark.parametrize("intStatus, strCode, strType", [
+    (429, "rate_limit_exceeded", "requests"), (429, "slow_down", "rate_limit_error"),
+    (429, None, None), (400, "insufficient_quota", "insufficient_quota"),
+    (500, None, None), (503, None, None)])
+def test_other_failures_have_no_reason(openai_answers, failed, intStatus, strCode, strType):
+    openai_answers(intStatus, strCode, strType)
     dctJob, strOut, strText = failed()
     assert "error_reason" not in dctJob
     assert DETAIL in strOut

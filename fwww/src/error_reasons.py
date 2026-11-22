@@ -3,11 +3,27 @@
 
 import openai
 
-# for each reason code: the exceptions it is recognised by, and the phrase shown to the visitor
+# the codes of a used-up budget, from https://developers.openai.com/api/docs/guides/error-codes
+BUDGET_CODES = ('credit_balance_exhausted', 'organization_spend_limit_exceeded',
+                'project_spend_limit_exceeded', 'organization_usage_limit_exceeded')
+# can be the code or the type of the error
+BUDGET_QUOTA = 'insufficient_quota'
+
+def is_budget_used_up(exception):
+    return isinstance(exception, openai.RateLimitError) and \
+        (exception.code in BUDGET_CODES or BUDGET_QUOTA in (exception.code, exception.type))
+
+def is_access_refused(exception):
+    return isinstance(exception, (openai.AuthenticationError, openai.PermissionDeniedError))
+
+def is_model_missing(exception):
+    return isinstance(exception, openai.NotFoundError)
+
+# for each reason code: how its failure is recognised, and the phrase shown to the visitor
 ERROR_REASONS = {
-    'openai_access': ((openai.AuthenticationError, openai.PermissionDeniedError),
-                      "OpenAI key rejected"),
-    'openai_model': ((openai.NotFoundError,), "OpenAI model not available"),
+    'openai_budget': (is_budget_used_up, "OpenAI budget used up"),
+    'openai_access': (is_access_refused, "OpenAI key rejected"),
+    'openai_model': (is_model_missing, "OpenAI model not available"),
 }
 
 def get_error_reason(exception):
@@ -17,8 +33,8 @@ def get_error_reason(exception):
     :param exception: The exception that ended the job.
     :return: The code, or None when the failure has no reason.
     """
-    for code, (exceptions, _) in ERROR_REASONS.items():
-        if isinstance(exception, exceptions):
+    for code, (is_recognised, _) in ERROR_REASONS.items():
+        if is_recognised(exception):
             return code
     return None
 
