@@ -31,6 +31,7 @@ services:
       - ./fwww:/app/fwww
       - ./data/jobs:/app/jobs
       - ./data/www:/app/www
+      - ./data/gallery:/app/gallery:ro
     depends_on:
       - chroma-rag
       - ollama-rag
