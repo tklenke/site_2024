@@ -237,13 +237,25 @@ def test_a_thread_with_pictures_is_shown_under_the_answer(client, jobs_dir, pict
     assert 'href="/cozyrag/done/pictures">All pictures for this answer (2)</a>' in strPage
 
 
-def test_the_pictures_are_under_the_short_disclaimer_and_above_the_feedback_buttons(client, jobs_dir, pictures):
+def test_the_pictures_are_between_the_provided_docs_and_the_other_related_docs(client, jobs_dir, pictures):
     pictures(PICTURES)
-    write_answer(jobs_dir, docs("THREADaaaaa"), [])
+    write_answer(jobs_dir, docs("THREADaaaaa"), docs("news_78"))
 
     strPage = results_page(client)
 
-    assert strPage.index("Use at your own risk") < strPage.index("<img ") < strPage.index('name="satisfaction"')
+    assert strPage.index("Use at your own risk") < strPage.index('name="satisfaction"') \
+        < strPage.index('action="/cozyrag/followup"') < strPage.index("Provided Docs") \
+        < strPage.index("<img ") < strPage.index("All pictures for this answer") \
+        < strPage.index("Other Related Docs") < strPage.index("Statistics:")
+
+
+def test_without_other_related_docs_the_pictures_are_above_the_statistics(client, jobs_dir, pictures):
+    pictures(PICTURES)
+    write_answer(jobs_dir, docs("THREADaaaaa"), strType="revise")
+
+    strPage = results_page(client)
+
+    assert strPage.index("Provided Docs") < strPage.index("<img ") < strPage.index("Statistics:")
 
 
 def test_a_picture_opens_in_a_new_tab(client, jobs_dir, pictures):
