@@ -2,6 +2,11 @@
 # ABOUTME: Read once, at first use; with no index the site shows no pictures and works as without them.
 
 import json
+from urllib.parse import quote
+from src.site_functions import url_from_source
+
+# a picture links only to its attachment at Google Groups
+PICTURE_LINK_START = 'https://groups.google.com/'
 
 class PictureIndex:
     def __init__(self, strPath):
@@ -34,3 +39,40 @@ class PictureIndex:
         except (OSError, ValueError) as e:
             print(f"No pictures: cannot read the gallery index {self.strPath}: {e!r}")
             return {}
+
+def get_threads(lstDocs, dctIndex, strThumbsUrl, setShown):
+    """The threads of the documents that have pictures, each once, leaving out those in setShown."""
+    lstThreads = []
+    for dctDoc in lstDocs:
+        strSource = dctDoc['source']
+        if strSource in setShown or strSource not in dctIndex:
+            continue
+        setShown.add(strSource)
+        dctEntry = dctIndex[strSource]
+        lstThreads.append({
+            'subject': dctEntry['metadata'].get('subject', ''),
+            'date': dctEntry['metadata'].get('date', ''),
+            'url': url_from_source(strSource)[0],
+            'pictures': [{'thumbnail_url': strThumbsUrl + '/' + quote(dctImage['thumbnail_filename'], safe=''),
+                          'url': dctImage['url'] if dctImage['url'].startswith(PICTURE_LINK_START) else None}
+                         for dctImage in dctEntry['images']],
+        })
+    return lstThreads
+
+def get_pictures(lstProvidedDocs, lstRelatedDocs, dctIndex, strThumbsUrl):
+    """
+    The threads with pictures among the documents of a job.
+
+    A document names its thread, so the pictures are those of the whole thread. A document
+    of another kind, or of a thread without pictures, has none.
+
+    :param lstProvidedDocs: The documents the answer was given, in order.
+    :param lstRelatedDocs: The other documents found, in order.
+    :param dctIndex: The gallery index.
+    :param strThumbsUrl: The address the thumbnails are served under.
+    :return: (threads of the provided documents, threads of the related documents not
+              among the provided ones); each thread with its subject, date, link and pictures.
+    """
+    setShown = set()
+    lstProvided = get_threads(lstProvidedDocs, dctIndex, strThumbsUrl, setShown)
+    return lstProvided, get_threads(lstRelatedDocs, dctIndex, strThumbsUrl, setShown)
