@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, url_for, flash, redirect, \
 import time, os, json, queue
 from src.answer_html import get_answer_html
 from src.llm_functions import FileProcessorThread
+from src.pictures import PictureIndex
 from src.error_reasons import get_error_text
 from src.site_config import read_config
 from src.site_functions import new_question, new_revision, \
@@ -34,6 +35,7 @@ FPThread.set_docs_params(cfg.getfloat('RAG','MAX_DISTANCE'), cfg.getint('RAG','M
                          cfg.getint('RAG','MAX_DOCUMENTS'), cfg.getint('RAG','MAX_DRAFT_DOCUMENTS'),)
 
 FPQueue.put("startup...checking all jobs")
+Pictures = PictureIndex(cfg.get('PICTURES','INDEX', fallback=''))
 Md = markdown.Markdown()
 
 # ----------- Main Routes
