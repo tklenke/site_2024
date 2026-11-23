@@ -205,10 +205,13 @@ def write_answer(pathJobs, lstProvided, lstRelated=None, strType="new"):
     (pathJobs / "done.json").write_text(json.dumps(dctJob))
 
 
-def results_page(client):
-    response = client.get("/cozyrag/done/processid")
+def results_page(client, strPath="/cozyrag/done/processid"):
+    response = client.get(strPath)
     assert response.status_code == 200
     return response.get_data(as_text=True)
+
+
+BOTH_PAGES = pytest.mark.parametrize("strPath", ["/cozyrag/done/processid", "/cozyrag/done/pictures"])
 
 
 def thumbnails(strPage):
@@ -305,34 +308,37 @@ def test_a_revise_shows_the_pictures_of_its_provided_documents(client, jobs_dir,
     assert "All pictures for this answer (3)" in strPage
 
 
-def test_names_are_percent_encoded_and_a_subject_is_text(client, jobs_dir, pictures):
+@BOTH_PAGES
+def test_names_are_percent_encoded_and_a_subject_is_text(client, jobs_dir, pictures, strPath):
     dctThread = thread("THREADddddd", ["d my #1 100%.png"])
     dctThread["metadata"]["subject"] = "Canopy <script>alert(1)</script>"
     pictures({"THREADddddd": dctThread})
     write_answer(jobs_dir, docs("THREADddddd"), [])
 
-    strPage = results_page(client)
+    strPage = results_page(client, strPath)
 
     assert thumbnails(strPage) == ["/cgimages/pictures/thumbs/d%20my%20%231%20100%25.png_thumb.jpg"]
     assert "<script>alert(1)" not in strPage
     assert "Canopy &lt;script&gt;alert(1)&lt;/script&gt;" in strPage
 
 
-def test_a_picture_whose_link_is_not_google_groups_has_no_link(client, jobs_dir, pictures):
+@BOTH_PAGES
+def test_a_picture_whose_link_is_not_google_groups_has_no_link(client, jobs_dir, pictures, strPath):
     pictures({"THREADddddd": thread("THREADddddd", ["d1.jpg"], strUrl="https://example.com/d1.jpg")})
     write_answer(jobs_dir, docs("THREADddddd"), [])
 
-    strPage = results_page(client)
+    strPage = results_page(client, strPath)
 
     assert thumbnails(strPage) == ["/cgimages/pictures/thumbs/d1.jpg_thumb.jpg"]
     assert "example.com" not in strPage
 
 
-def test_the_author_is_not_on_the_page(client, jobs_dir, pictures):
+@BOTH_PAGES
+def test_the_author_is_not_on_the_page(client, jobs_dir, pictures, strPath):
     pictures(PICTURES)
     write_answer(jobs_dir, docs("THREADaaaaa"), docs("THREADbbbbb"))
 
-    assert "zqauthor" not in results_page(client)
+    assert "zqauthor" not in results_page(client, strPath)
 
 
 def test_the_status_response_of_a_finished_job_carries_the_thumbnails(client, jobs_dir, pictures):
@@ -349,16 +355,82 @@ def test_the_status_response_of_a_finished_job_carries_the_thumbnails(client, jo
     ("", "No pictures: the gallery index is not set (INDEX in [PICTURES])"),
     ("/nonexistent/gallery.idx", "No pictures: cannot read the gallery index /nonexistent/gallery.idx: FileNotFoundError"),
 ])
+@BOTH_PAGES
 def test_without_an_index_the_page_is_served_without_pictures(client, jobs_dir, site_app, monkeypatch, capsys,
-                                                             strSetting, strLog):
+                                                             strSetting, strLog, strPath):
     monkeypatch.setattr(site_app, "Pictures", PictureIndex(strSetting))
     write_answer(jobs_dir, docs("THREADaaaaa"), [])
 
-    strPage = results_page(client)
-    results_page(client)
+    strPage = results_page(client, strPath)
+    results_page(client, strPath)
 
-    assert "Four." in strPage
+    assert "how many seats" in strPage
     assert "<img" not in strPage
     lstLines = capsys.readouterr().out.splitlines()
     assert len(lstLines) == 1
     assert lstLines[0].startswith(strLog)
+
+
+
+# ---- the pictures page
+def pictures_page(client):
+    return results_page(client, "/cozyrag/done/pictures")
+
+
+def test_pictures_page_has_the_question_and_a_link_back_to_the_answer(client, jobs_dir, pictures):
+    pictures(PICTURES)
+    write_answer(jobs_dir, docs("THREADaaaaa"), [])
+
+    strPage = pictures_page(client)
+
+    assert "how many seats" in strPage
+    assert 'href="/cozyrag/done/processid"' in strPage
+
+
+def test_pictures_page_shows_provided_threads_then_the_others(client, jobs_dir, pictures):
+    pictures(PICTURES)
+    write_answer(jobs_dir, docs("THREADbbbbb"), docs("THREADccccc", "THREADbbbbb", "THREADaaaaa"))
+
+    strPage = pictures_page(client)
+
+    assert thumbnails(strPage) == ["/cgimages/pictures/thumbs/b1.jpg_thumb.jpg",
+                                   "/cgimages/pictures/thumbs/c1.jpg_thumb.jpg",
+                                   "/cgimages/pictures/thumbs/a1.jpg_thumb.jpg",
+                                   "/cgimages/pictures/thumbs/a2.jpg_thumb.jpg"]
+    assert strPage.index("Pictures from the threads this answer drew on") < strPage.index("b1.jpg") \
+        < strPage.index("Pictures from other threads found") < strPage.index("c1.jpg")
+
+
+def test_pictures_page_shows_every_picture(client, jobs_dir, pictures):
+    pictures(MANY)
+    write_answer(jobs_dir, docs("THREAD00000", "THREAD00001", "THREAD00002"), docs("THREAD00003"))
+
+    assert len(thumbnails(pictures_page(client))) == 20
+
+
+def test_pictures_page_of_a_revise_has_one_section(client, jobs_dir, pictures):
+    pictures(PICTURES)
+    write_answer(jobs_dir, docs("THREADbbbbb", "THREADaaaaa"), strType="revise")
+
+    strPage = pictures_page(client)
+
+    assert len(thumbnails(strPage)) == 3
+    assert "Pictures from the threads this answer drew on" in strPage
+    assert "Pictures from other threads found" not in strPage
+
+
+def test_pictures_page_without_pictures_says_so(client, jobs_dir, pictures):
+    pictures(PICTURES)
+    write_answer(jobs_dir, docs("news_78"), [])
+
+    strPage = pictures_page(client)
+
+    assert "<img" not in strPage
+    assert "No pictures were found for this answer." in strPage
+
+
+def test_pictures_page_thumbnails_load_when_they_come_into_view(client, jobs_dir, pictures):
+    pictures(MANY)
+    write_answer(jobs_dir, docs("THREAD00000"), [])
+
+    assert re.findall(r"<img [^>]*>", pictures_page(client))[0].count('loading="lazy"') == 1

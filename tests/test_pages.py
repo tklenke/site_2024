@@ -100,23 +100,24 @@ def test_job_without_an_answer_redirects_to_the_question_form(client, jobs_dir, 
 
 
 # ---- unknown jobs and columns
-@pytest.mark.parametrize("strPage", ["status", "processid"])
+@pytest.mark.parametrize("strPage", ["status", "processid", "pictures"])
 def test_unknown_job_is_not_found(client, capsys, strPage):
     assert client.get(f"/cozyrag/nosuchjob/{strPage}").status_code == 404
     assert "nosuchjob.json" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("binContent", UNREADABLE)
-@pytest.mark.parametrize("strPage", ["status", "processid"])
+@pytest.mark.parametrize("strPage", ["status", "processid", "pictures"])
 def test_unreadable_job_is_not_found(client, jobs_dir, capsys, strPage, binContent):
     (jobs_dir / "bad.json").write_bytes(binContent)
     assert client.get(f"/cozyrag/bad/{strPage}").status_code == 404
     assert "Error decoding JSON file" in capsys.readouterr().out
 
 
-def test_results_of_an_unfinished_job_are_not_found(client, jobs_dir):
+@pytest.mark.parametrize("strPage", ["processid", "pictures"])
+def test_results_of_an_unfinished_job_are_not_found(client, jobs_dir, strPage):
     write_job(jobs_dir, RUNNING)
-    assert client.get("/cozyrag/run/processid").status_code == 404
+    assert client.get(f"/cozyrag/run/{strPage}").status_code == 404
 
 
 def test_unknown_column_is_not_found(client, jobs_dir):

@@ -1,0 +1,8 @@
+{% for thread in threads %}
+<p>
+    <a href="{{ thread['url'] }}" target="_blank" rel="noopener">{{ thread['subject'] }}</a> {{ thread['date'] }}<br>
+    {% for picture in thread['pictures'] %}
+    {% if picture['url'] %}<a href="{{ picture['url'] }}" target="_blank" rel="noopener">{% endif %}<img src="{{ picture['thumbnail_url'] }}" alt="Picture from the thread" width="120" height="120" loading="lazy">{% if picture['url'] %}</a>{% endif %}
+    {% endfor %}
+</p>
+{% endfor %}

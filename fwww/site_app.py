@@ -181,6 +181,16 @@ def cozyrag_processid(process_id):
         abort(404)
     return render_results(data)
 
+@app.route("/cozyrag/<string:process_id>/pictures")
+def cozyrag_pictures(process_id):
+    data = get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id)
+    #an unknown or unfinished job has no pictures to show
+    if not data.get('result'):
+        abort(404)
+    provided, related = get_job_pictures(data)
+    return render_template('cozyrag_pictures.html', query=data['query'], process_id=process_id,
+                           provided=provided, related=related)
+
 @app.route("/cozyrag/jobs")
 @app.route("/cozyrag/jobs/<column>")
 def cozyrag_jobs(column=None):

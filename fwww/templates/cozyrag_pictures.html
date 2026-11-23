@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="row">
+      <div class="full column" style="margin-top: 50px;">
+        <h1>CozyRAG</h1>
+        <h5>Pictures for an answer</h5>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="ten columns">
+        <strong>Your Question:</strong>
+        <pre><code>{{ query }}</code></pre>
+        <p><a href="/cozyrag/{{ process_id }}/processid">Back to the answer</a></p>
+        {% if provided %}
+        <h5>Pictures from the threads this answer drew on</h5>
+        {% with threads=provided %}{% include "picture_threads.html" %}{% endwith %}
+        {% endif %}
+        {% if related %}
+        <h5>Pictures from other threads found</h5>
+        {% with threads=related %}{% include "picture_threads.html" %}{% endwith %}
+        {% endif %}
+        {% if not provided and not related %}
+        <p>No pictures were found for this answer.</p>
+        {% endif %}
+      </div>
+    </div>
+{% endblock %}
