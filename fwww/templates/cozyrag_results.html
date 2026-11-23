@@ -15,6 +15,25 @@
     </div>
 </div>
 
+{% if pictures['count'] %}
+<div class="row">
+    <div class="ten columns">
+        {% if pictures['threads'] %}
+        <h5>Pictures from the threads this answer drew on</h5>
+        {% for thread in pictures['threads'] %}
+        <p>
+            <a href="{{ thread['url'] }}" target="_blank" rel="noopener">{{ thread['subject'] }}</a> {{ thread['date'] }}<br>
+            {% for picture in thread['pictures'] %}
+            {% if picture['url'] %}<a href="{{ picture['url'] }}" target="_blank" rel="noopener">{% endif %}<img src="{{ picture['thumbnail_url'] }}" alt="Picture from the thread" width="120" height="120" loading="lazy">{% if picture['url'] %}</a>{% endif %}
+            {% endfor %}
+        </p>
+        {% endfor %}
+        {% endif %}
+        <p><a href="/cozyrag/{{ results['process_id'] }}/pictures">All pictures for this answer ({{ pictures['count'] }})</a></p>
+    </div>
+</div>
+{% endif %}
+
 <div class="row">
     <div class="ten columns">
         <h5>Ask Another Question</h5>

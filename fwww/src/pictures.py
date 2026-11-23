@@ -76,3 +76,17 @@ def get_pictures(lstProvidedDocs, lstRelatedDocs, dctIndex, strThumbsUrl):
     setShown = set()
     lstProvided = get_threads(lstProvidedDocs, dctIndex, strThumbsUrl, setShown)
     return lstProvided, get_threads(lstRelatedDocs, dctIndex, strThumbsUrl, setShown)
+
+def count_pictures(lstThreads):
+    return sum(len(dctThread['pictures']) for dctThread in lstThreads)
+
+def first_pictures(lstThreads, intMax):
+    """The threads holding the first intMax pictures, in order; the last thread may be cut."""
+    lstFirst = []
+    intLeft = intMax
+    for dctThread in lstThreads:
+        if intLeft <= 0:
+            break
+        lstFirst.append({**dctThread, 'pictures': dctThread['pictures'][:intLeft]})
+        intLeft -= len(lstFirst[-1]['pictures'])
+    return lstFirst

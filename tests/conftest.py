@@ -91,9 +91,11 @@ def processor(collection):
 
 @pytest.fixture(scope="session")
 def site_app(tmp_path_factory):
-    """The site's app module. Its job thread is left out, so no service is needed."""
+    """The site's app module. Its job thread is left out, so no service is needed. No thread has pictures."""
     pathRun = tmp_path_factory.mktemp("run")
-    (pathRun / "site.ini").write_text(SITE_INI)
+    (pathRun / "gallery.idx").write_text("{}")
+    (pathRun / "site.ini").write_text(SITE_INI + f"[PICTURES]\nINDEX = {pathRun / 'gallery.idx'}\n"
+                                      "THUMBS_URL = /cgimages/pictures/thumbs\n")
     (pathRun / "site_local.ini").write_text("[KEYS]\nSESSION = session-key\nOPENAI = unused\n")
     strCwd = os.getcwd()
     with pytest.MonkeyPatch.context() as patch:

@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, url_for, flash, redirect, \
 import time, os, json, queue
 from src.answer_html import get_answer_html
 from src.llm_functions import FileProcessorThread
-from src.pictures import PictureIndex
+from src.pictures import PictureIndex, get_pictures, count_pictures, first_pictures
 from src.error_reasons import get_error_text
 from src.site_config import read_config
 from src.site_functions import new_question, new_revision, \
@@ -14,6 +14,8 @@ from src.site_functions import new_question, new_revision, \
 import markdown
 
 FEEDBACK_RATINGS = ('perfect', 'ok', 'not_good')
+# thumbnails shown under an answer; the pictures page shows all
+PICTURES_UNDER_ANSWER = 12
 
 app = Flask(__name__)
 
@@ -138,12 +140,26 @@ def cozyrag_status(process_id):
 
     status = {'status': data['status']}
     if data['status'] == 'complete':
-        status['result_html'] = render_template('cozyrag_results.html', results=get_job_for_display(data), show_revise=cfg.getboolean('OPTIONS','SHOW_REVISE'))
+        status['result_html'] = render_results(data)
     elif data['status'] == 'error':
         status['status_text'] = get_error_text(data.get('error_reason'))
     else:
         status['status_text'] = "Status: " + data['status'] + "." * (int(cur_time) % 10)
     return jsonify(status)
+
+# the threads with pictures among the documents of a job: those the answer was given, then the others
+def get_job_pictures(data):
+    result = data.get('result', {})
+    return get_pictures(result.get('provided_docs', []), result.get('related_docs', []),
+                        Pictures.threads(), cfg.get('PICTURES','THUMBS_URL', fallback=''))
+
+# the results of a finished job, as a page or as the part the polling page shows
+def render_results(data):
+    provided, related = get_job_pictures(data)
+    pictures = {'threads': first_pictures(provided, PICTURES_UNDER_ANSWER),
+                'count': count_pictures(provided) + count_pictures(related)}
+    return render_template('cozyrag_results.html', results=get_job_for_display(data), pictures=pictures,
+                           show_revise=cfg.getboolean('OPTIONS','SHOW_REVISE'))
 
 @app.route("/cozyrag/feedback", methods=('GET', 'POST'))
 def cozyrag_feedback():
@@ -159,11 +175,11 @@ def cozyrag_feedback():
 
 @app.route("/cozyrag/<string:process_id>/processid")
 def cozyrag_processid(process_id):
-    data = get_job_for_display(get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id))
+    data = get_process_info(cfg.get('PATHS','JOBS_DiR'), process_id)
     #an unknown or unfinished job has no results to show
-    if not data['result']:
+    if not data.get('result'):
         abort(404)
-    return render_template('cozyrag_results.html', results=data, show_revise=cfg.getboolean('OPTIONS','SHOW_REVISE'))
+    return render_results(data)
 
 @app.route("/cozyrag/jobs")
 @app.route("/cozyrag/jobs/<column>")
