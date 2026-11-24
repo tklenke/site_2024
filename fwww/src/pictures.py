@@ -35,10 +35,25 @@ class PictureIndex:
                 dctThreads = json.load(f)
             if not isinstance(dctThreads, dict):
                 raise ValueError("The content is not a JSON object")
+            for strId, dctEntry in dctThreads.items():
+                check_thread(strId, dctEntry)
             return dctThreads
         except (OSError, ValueError) as e:
             print(f"No pictures: cannot read the gallery index {self.strPath}: {e!r}")
             return {}
+
+def check_thread(strId, dctEntry):
+    """
+    Raises ValueError when a thread of the index lacks a field the pages use, so that an
+    index of another shape gives no pictures instead of pages that fail.
+    """
+    if not (isinstance(dctEntry, dict) and isinstance(dctEntry.get('metadata'), dict)
+            and isinstance(dctEntry.get('images'), list)):
+        raise ValueError(f"Thread {strId} has no metadata or no list of images")
+    for dctImage in dctEntry['images']:
+        if not (isinstance(dctImage, dict) and isinstance(dctImage.get('thumbnail_filename'), str)
+                and isinstance(dctImage.get('url'), str)):
+            raise ValueError(f"A picture of thread {strId} has no thumbnail_filename or no url")
 
 def get_threads(lstDocs, dctIndex, strThumbsUrl, setShown):
     """The threads of the documents that have pictures, each once, leaving out those in setShown."""

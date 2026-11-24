@@ -79,6 +79,28 @@ def test_file_that_is_not_an_object_gives_no_pictures(tmp_path, capsys):
     assert len(capsys.readouterr().out.splitlines()) == 1
 
 
+def without(dctEntry, strField):
+    return {strKey: value for strKey, value in dctEntry.items() if strKey != strField}
+
+
+@pytest.mark.parametrize("dctEntry", [
+    {**INDEX["THREADaaaaa"], "images": [without(INDEX["THREADaaaaa"]["images"][0], "thumbnail_filename")]},
+    {**INDEX["THREADaaaaa"], "images": [without(INDEX["THREADaaaaa"]["images"][0], "url")]},
+    without(INDEX["THREADaaaaa"], "metadata"),
+    without(INDEX["THREADaaaaa"], "images"),
+    "not a thread",
+])
+def test_index_lacking_a_field_the_pages_use_gives_no_pictures_and_one_log_line(tmp_path, capsys, dctEntry):
+    pathIndex = tmp_path / "gallery.idx"
+    pathIndex.write_text(json.dumps({**INDEX, "THREADbbbbb": dctEntry}))
+
+    assert PictureIndex(str(pathIndex)).threads() == {}
+    lstLines = capsys.readouterr().out.splitlines()
+    assert len(lstLines) == 1
+    assert lstLines[0].startswith(f"No pictures: cannot read the gallery index {pathIndex}: ValueError")
+    assert "THREADbbbbb" in lstLines[0]
+
+
 def test_the_site_reads_its_setting(site_app):
     assert site_app.Pictures.strPath == site_app.cfg.get("PICTURES", "INDEX", fallback="")
 
