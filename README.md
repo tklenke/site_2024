@@ -9,6 +9,51 @@ Website 2024 revision.  Docker based.  Nginx, flask and supporting ollama, chrom
   server/certbot/conf/live/m24tom.com and restarts the containers
   + when certbot asks whether to expand the existing certificate, answer Expand
 
+# Deploy a change of the code
+  + run 2026-11-24 like this for the pictures of an answer (and 2026-11-22 for the answer display)
+  + locally, with the tests passing: merge the branch into main and push it
+```
+cd ~/projects/site_2024
+git checkout main
+git merge --ff-only wip/annual-refresh
+git push origin main
+```
+  + on the server, check first: no change but the untracked `server/old.nginx_all_apps.conf`, on
+  main, and the commit that runs now (write it down: it is the one to go back to)
+```
+cd ~/site_2024
+git status --short
+git branch --show-current
+git log --oneline -1
+```
+  + keep the running image for going back, tagged with that commit (here `775692d`)
+```
+docker tag site_2024-flask:latest site_2024-flask:775692d
+docker images site_2024-flask
+```
+  + then the change; `up -d` makes the flask container new, and nginx is restarted after it because
+  it looks up the name `flask` only when it starts
+```
+git pull
+git log --oneline -1
+docker compose build flask
+docker compose up -d flask
+docker compose restart nginx
+docker compose ps
+```
+  + `ps` lists four containers, all up; in a browser ask a question, then check what the change is for
+  + to go back, with the commit written down above
+```
+git checkout 775692d
+docker tag site_2024-flask:775692d site_2024-flask:latest
+docker compose up -d --force-recreate flask
+docker compose restart nginx
+```
+  + once the site has run well for a few days: `docker image rm site_2024-flask:775692d`
+  + after a reboot of the server everything comes back by itself (checked 2026-11-24)
+  + the yearly update of the data (the collection, the pictures) is in the `ml` repository:
+  its `README.md` lists the steps in order
+
 # Run the tests
 python3 -m venv .venv && .venv/bin/pip install -r requirements_test.txt
 .venv/bin/python -m pytest
