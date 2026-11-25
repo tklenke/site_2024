@@ -9,7 +9,7 @@
         <h3>Results</h3>
         {% endif %}
         <div style="overflow-x: auto;">
-        {{ answer_to_html(results['result']['answer'])|safe }}
+        {{ answer_to_html(results['result']['answer'], results['result'].get('citations'))|safe }}
         </div>
         {% include "disclaimer_min.html" %}
     </div>
@@ -96,7 +96,7 @@
                     {% if results['result']['related_docs'] %}
                     <td>{{ doc['score'] }}</td>
                     {% endif %}
-                    <td>{{ originid_anchor(doc['source'])|safe }}</td>
+                    <td>{% if doc['number'] %}[{{ doc['number'] }}] {% endif %}{{ originid_anchor(doc['source'])|safe }}</td>
                 </tr>
 
     {% endfor %}

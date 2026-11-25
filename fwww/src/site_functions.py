@@ -150,7 +150,21 @@ def shorten_email(email):
 def get_result_for_display(result):
     deduped = {key: dedupe_list_of_docs(result[key]) for key in ('provided_docs', 'related_docs')
                if key in result}
+    #the rows of a numbered answer are numbered here, where they are made, so that the numbers
+    #in the answer and those of the rows cannot differ
+    if result.get('numbered_docs') and 'provided_docs' in deduped:
+        deduped['provided_docs'] = [{**row, 'number': n} for n, row in enumerate(deduped['provided_docs'], 1)]
+        deduped['citations'] = get_citations(result['provided_docs'], deduped['provided_docs'])
     return {**result, **deduped}
+
+# for each chunk sent, in the order sent: the number, address and label of its source's row
+def get_citations(provided_docs, rows):
+    numbers = {row['source']: row['number'] for row in rows}
+    citations = []
+    for doc in provided_docs:
+        href, title = url_from_source(doc['source'])
+        citations.append({'number': numbers[doc['source']], 'href': href.strip() or None, 'title': title})
+    return citations
 
 # a copy of the job record that is safe to show on a web page
 # an unfinished job has no result or elapsed time
