@@ -37,6 +37,7 @@ LLM_DRAFT = unused
 LLM_REVISE = unused
 [PROMPTS]
 PREFIX = search_query:
+NUMBER_DOCS = True
 [OPTIONS]
 SHOW_REVISE = True
 """
@@ -57,6 +58,9 @@ class NoJobThread:
     def set_docs_params(self, *args):
         pass
 
+    def set_doc_numbering(self, numbered):
+        self.numbered = numbered
+
 
 @pytest.fixture(scope="module")
 def collection():
@@ -76,6 +80,7 @@ def processor(collection):
     processor.llm_revise_model = "revise-model"
     processor.set_docs_params(max_distance=.35, min_documents=5, max_documents=60,
                               max_draft_documents=15)
+    processor.set_doc_numbering(False)
     processor.lstPrompts = []
 
     def create(model, messages):

@@ -201,6 +201,7 @@ class FileProcessorThread(threading.Thread):
         self.set_models()
         self.set_docs_params()
         self.set_embed_prefix()
+        self.set_doc_numbering()
         super().__init__()
         self.start()  # Start the thread immediately
 
@@ -221,6 +222,10 @@ class FileProcessorThread(threading.Thread):
     def set_embed_prefix(self, prefix=""):
         self.embed_prefix = prefix
         return
+
+    def set_doc_numbering(self, numbered=False):
+        self.numbered = numbered
+        return
     
     def get_query_results(self, question):
         #embed the question
@@ -238,7 +243,7 @@ class FileProcessorThread(threading.Thread):
             #prune related documents
             nDocs = get_num_draft_docs(rQuery,self.max_distance,self.min_documents,self.max_draft_documents)
             #construct the prompt
-            prompt = build_prompt(data, rQuery['documents'][0][:nDocs])
+            prompt = build_prompt(data, rQuery['documents'][0][:nDocs], numbered=self.numbered)
             modelName = self.llm_draft_model
         else:
             ids_for_fetch = get_prior_doc_ids_from_data(data)
@@ -251,7 +256,7 @@ class FileProcessorThread(threading.Thread):
                 #a document of the previous content is not sent again
                 additionalDocs = [text for doc_id, text in zip(rQuery['ids'][0][:nDocs], rQuery['documents'][0])
                                   if doc_id not in rPriorDocs['ids']]
-            prompt = build_prompt(data, rPriorDocs['documents'], additionalDocs)
+            prompt = build_prompt(data, rPriorDocs['documents'], additionalDocs, numbered=self.numbered)
  
     # Optional: specify what data to include (ids are always included)
     #include=["metadatas", "documents"] )
@@ -272,6 +277,8 @@ class FileProcessorThread(threading.Thread):
         #capture and return the results
         r['time'] = time.time()-t0
         r['type'] = data['type']
+        #whether the chunks were numbered in the prompt, so that the numbers in the answer name them
+        r['numbered_docs'] = self.numbered
 
         if data['type'] == "new":
             r['number provided docs'] = nDocs
