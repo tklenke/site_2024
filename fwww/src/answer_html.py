@@ -6,7 +6,8 @@ import re
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
-AnswerMd = MarkdownIt('commonmark', {'html': False}).enable('table').disable('image')
+# a link definition such as [1]: https://... is not read, so that a number can only lead to a source of ours
+AnswerMd = MarkdownIt('commonmark', {'html': False}).enable('table').disable(['image', 'reference'])
 
 # a citation mark, [3] or [2, 5], and the marks that follow it with nothing but spaces between
 CITATION_MARK = r"\[\d+(?:\s*,\s*\d+)*\]"

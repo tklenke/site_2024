@@ -141,3 +141,21 @@ def test_a_revise_and_a_followup_link_by_their_own_list(show, strType):
     strAnswer, strProvided = show(job("Use flox [2]. Sand [3].", strType, lstProvided))
     assert links(strAnswer) == [NEWS_LINK[:2] + ("[2]",), MESSAGE_LINK[:2] + ("[1]",)]
     assert re.search(r"\[1\]\s*<a href='" + MESSAGE_URL, strProvided)
+
+
+# ---- a link the model defines itself (plan 4.1b)
+DEFINITION = "Use flox [1].\n\n[1]: https://example.com\n"
+
+
+def test_a_definition_in_a_numbered_answer_does_not_change_where_a_number_leads(show):
+    strAnswer, _ = show(job(DEFINITION))
+    # the definition is shown as text, and its number too leads to our source
+    assert links(strAnswer) == [NEWS_LINK, NEWS_LINK]
+    assert "https://example.com" in strAnswer
+    assert 'href="https://example.com"' not in strAnswer
+
+
+def test_a_definition_makes_no_link_in_an_answer_that_is_not_numbered(show):
+    strAnswer, _ = show(job(DEFINITION, bNumbered=False))
+    assert "<a " not in strAnswer
+    assert "Use flox [1]." in strAnswer
