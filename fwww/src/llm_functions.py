@@ -14,7 +14,9 @@ initial_prompt = ""
 secondary_prompt =""" Use the following pieces of context to answer the users question. -----"""
 secondary_prompt =""" Be concise, precise and accurate. If the answer is not within the context provided 
 say so. Use the following pieces of context to answer the users question. ----- """
-secondary_prompt =""" Use the following pieces of context to answer the users question about a Cozy amatuer-build aircraft. ----- """
+secondary_instruction = """ Use the following pieces of context to answer the users question about a Cozy amatuer-build aircraft. """
+context_separator = """----- """
+secondary_prompt = secondary_instruction + context_separator
 
 revise_prompt="""You are the refinement model.
 Review the user's question about a Cozy amatuer-build aircraft, the draft response and the retrieved context.
@@ -29,6 +31,12 @@ for the draft response, and the additional content based on the followup questio
 Your task is to answer the follow up question to the draft response using the additional content
 and previous content as context.
 """
+
+#added to the instruction of each prompt when its pieces of context are numbered
+citation_instruction = ("Each piece of context starts with its number in square brackets. After a statement "
+                        "that you take from the context, write the number of the piece it comes from in square "
+                        "brackets, like this: [3]. For more than one piece write [2][5]. Use only the numbers "
+                        "given. Do not write a list of sources at the end.")
 
 #stands in for the additional content of a follow-up that has none
 no_additional_content="None. Every document retrieved for the follow up question is in the previous content."
@@ -82,25 +90,40 @@ def get_docs_in_order(collection, ids):
     order = [positions[doc_id] for doc_id in ids if doc_id in positions]
     return {key: [rDocs[key][i] for i in order] for key in ('ids', 'documents', 'metadatas')}
 
-def build_prompt(data, docs, additional_docs=()):
+def number_docs(docs, nFirst=1):
+    """The document texts, each starting with its number in square brackets."""
+    return [f"[{n}] {text}" for n, text in enumerate(docs, nFirst)]
+
+def build_prompt(data, docs, additional_docs=(), numbered=False):
     """
     Builds the prompt for a job.
 
     :param data: The job data, with the 'type' and 'query' and, for a revision or a follow-up, the prior 'result'.
     :param docs: The document texts for a new question, or those of the prior answer.
     :param additional_docs: The document texts retrieved for a follow-up question.
+    :param numbered: Whether the documents are numbered and the model is asked to cite them by number.
+                     The additional documents count on from the last of docs.
     :return: The prompt string.
     """
+    secondary = secondary_prompt
+    revise = revise_prompt
+    followup = followup_prompt
+    if numbered:
+        additional_docs = number_docs(additional_docs, len(docs) + 1)
+        docs = number_docs(docs)
+        secondary = f"{secondary_instruction}{citation_instruction} {context_separator}"
+        revise = f"{revise_prompt}{citation_instruction}\n"
+        followup = f"{followup_prompt}{citation_instruction}\n"
     doctext = '\n\n'.join(docs)
     if data['type'] == "new":
-        prompt = f"{initial_prompt} {data['query']} {secondary_prompt} {doctext}"
+        prompt = f"{initial_prompt} {data['query']} {secondary} {doctext}"
     elif data['type'] == "followup":
         additionaldocs = '\n\n'.join(additional_docs) or no_additional_content
-        prompt = f"""{followup_prompt} USER QUESTION: {data['query']}
+        prompt = f"""{followup} USER QUESTION: {data['query']}
                         DRAFT RESPONSE: {data['result']['answer']} PREVIOUS CONTENT: {doctext}
                         ADDITIONAL_CONTENT: {additionaldocs}"""
     else: #revise
-        prompt = f"""{revise_prompt} USER QUESTION {data['query']} 
+        prompt = f"""{revise} USER QUESTION {data['query']} 
                             DRAFT RESPONSE: {data['result']['answer']} 
                             RETRIEVED CONTENT: {doctext}"""
     return prompt
