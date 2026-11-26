@@ -29,8 +29,17 @@ def get_answer_html(text, citations=None):
     tokens = AnswerMd.parse(text, env)
     for token in tokens:
         if token.children:
-            token.children = [new for child in token.children for new in link_citations(child, citations)]
+            token.children = link_citations_outside_links(token.children, citations)
     return AnswerMd.renderer.render(tokens, AnswerMd.options, env)
+
+def link_citations_outside_links(children, citations):
+    """The inline tokens with their citation marks linked; a mark inside a link of the answer stays as written."""
+    tokens = []
+    depth = 0
+    for child in children:
+        depth += {'link_open': 1, 'link_close': -1}.get(child.type, 0)
+        tokens += link_citations(child, citations) if depth == 0 else [child]
+    return tokens
 
 def get_cited_rows(run, citations):
     """The rows named by a run of marks, once each in the order written; a number that names no chunk is left out."""

@@ -100,6 +100,13 @@ def test_a_number_in_code_stays_as_written(show):
     assert "b[2]" in strAnswer
 
 
+def test_a_number_in_a_link_of_the_answer_stays_as_written(show):
+    strAnswer, _ = show(job("See [the doc [1]](https://example.com) and [3]."))
+    assert links(strAnswer) == [MESSAGE_LINK]
+    assert '<a href="https://example.com">the doc [1]</a>' in strAnswer
+    assert strAnswer.count("<a ") == 2
+
+
 def test_a_source_without_an_address_has_its_number_and_no_link(show):
     strAnswer, strProvided = show(job("Use flox [1].", lstProvided=[entry("x0", NO_ADDRESS, "0.80")]))
     assert links(strAnswer) == []
