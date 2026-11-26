@@ -11,10 +11,10 @@ PROVIDED = ["cb__ref_info_-_kitplane___html101", "ttXB7VHdy1w0", "cb__ref_info_-
 RELATED = ["qcyg9TEAGXE0", "30SXLjAf9AY1", "30SXLjAf9AY0"]
 
 
-def test_the_setting_is_off_on_the_site():
+def test_the_setting_is_on_on_the_site():
     cfg = configparser.ConfigParser()
     cfg.read(FWWW / "site.ini")
-    assert cfg.getboolean("PROMPTS", "NUMBER_DOCS") is False
+    assert cfg.getboolean("PROMPTS", "NUMBER_DOCS") is True
 
 
 def test_the_site_gives_the_setting_to_the_job_thread(site_app):
